@@ -31,6 +31,8 @@ const RESOURCES = [
 const Scheduling = () => {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
+  const [showActionDialog, setShowActionDialog] = useState(false);
+  const [showViewBookingsDialog, setShowViewBookingsDialog] = useState(false);
   const [showClassDialog, setShowClassDialog] = useState(false);
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -39,8 +41,18 @@ const Scheduling = () => {
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       setSelectedDate(date);
-      setShowClassDialog(true);
+      setShowActionDialog(true);
     }
+  };
+
+  const handleViewBookings = () => {
+    setShowActionDialog(false);
+    setShowViewBookingsDialog(true);
+  };
+
+  const handleScheduleNew = () => {
+    setShowActionDialog(false);
+    setShowClassDialog(true);
   };
 
   const handleClassSelect = (classId: number) => {
@@ -69,6 +81,11 @@ const Scheduling = () => {
     return bookings.filter(b => b.date === dateStr);
   };
 
+  const getBookingForClass = (classId: number, date: Date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return bookings.find(b => b.date === dateStr && b.class === classId);
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -79,7 +96,7 @@ const Scheduling = () => {
 
         <div className="grid lg:grid-cols-2 gap-8">
           <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Selecione uma Data</h2>
+            <h2 className="text-xl font-semibold mb-4">Selecione uma data para agendar</h2>
             <Calendar
               mode="single"
               selected={selectedDate}
@@ -89,7 +106,7 @@ const Scheduling = () => {
             />
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-6 overflow-y-auto max-h-[600px]">
             <h2 className="text-xl font-semibold mb-4">Agendamentos</h2>
             <div className="space-y-3">
               {bookings.length === 0 ? (
@@ -122,6 +139,66 @@ const Scheduling = () => {
             </div>
           </Card>
         </div>
+
+        {/* Action Selection Dialog */}
+        <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>O que deseja fazer?</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-3 py-4">
+              <Button
+                onClick={handleViewBookings}
+                variant="outline"
+                className="h-16 text-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                Ver agendamentos para o dia
+              </Button>
+              <Button
+                onClick={handleScheduleNew}
+                variant="outline"
+                className="h-16 text-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                Agendar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Bookings Dialog */}
+        <Dialog open={showViewBookingsDialog} onOpenChange={setShowViewBookingsDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                Agendamentos - {selectedDate && format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-3 py-4 max-h-[400px] overflow-y-auto">
+              {CLASSES.map((classItem) => {
+                const booking = selectedDate ? getBookingForClass(classItem.id, selectedDate) : null;
+                const resourceColor = booking 
+                  ? RESOURCES.find(r => r.label === booking.resource)?.color 
+                  : "bg-muted";
+                
+                return (
+                  <div
+                    key={classItem.id}
+                    className={`p-4 rounded-lg border ${resourceColor || "bg-muted"}`}
+                  >
+                    <p className="font-semibold text-lg text-white mb-1">{classItem.label}</p>
+                    {booking ? (
+                      <p className="text-sm text-white/90">
+                        {booking.resource} agendado por: {booking.user}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Disponível</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Class Selection Dialog */}
         <Dialog open={showClassDialog} onOpenChange={setShowClassDialog}>

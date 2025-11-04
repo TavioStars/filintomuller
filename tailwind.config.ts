@@ -57,6 +57,9 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "meeting-room": "hsl(var(--meeting-room))",
+        "datashow-1": "hsl(var(--datashow-1))",
+        "datashow-2": "hsl(var(--datashow-2))",
       },
       borderRadius: {
         lg: "var(--radius)",

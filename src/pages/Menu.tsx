@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Bell, Clock, Settings, ArrowLeft, BookOpen, Calendar } from "lucide-react";
+import { Bell, Clock, Settings, ArrowLeft, BookOpen, Calendar, GraduationCap } from "lucide-react";
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -14,18 +14,28 @@ const Menu = () => {
       title: "Horários",
       description: "Consulte horários de aulas",
       icon: Clock,
+      iconColor: "text-blue-500",
       path: "/schedules",
     },
     {
       title: "Notificações",
       description: "Veja eventos e avisos",
       icon: Bell,
+      iconColor: "text-amber-500",
       path: "/notifications",
+    },
+    {
+      title: "Materiais Didáticos",
+      description: "Acesse vídeos e conteúdos",
+      icon: GraduationCap,
+      iconColor: "text-purple-500",
+      path: "/materials",
     },
     {
       title: "Configurações",
       description: "Ajuste suas preferências",
       icon: Settings,
+      iconColor: "text-green-500",
       path: "/settings",
     },
   ];
@@ -79,7 +89,7 @@ const Menu = () => {
               >
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-muted rounded-lg">
-                    <Icon className="h-6 w-6 text-primary" />
+                    <Icon className={`h-6 w-6 ${item.iconColor}`} />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-xl font-semibold mb-2">{item.title}</h3>

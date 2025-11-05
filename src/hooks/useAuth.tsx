@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import LoadingScreen from "@/components/LoadingScreen";
 
 interface AuthContextType {
   user: User | null;
@@ -92,7 +93,7 @@ export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   }, [user, loading, navigate]);
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+    return <LoadingScreen />;
   }
 
   if (!user) {

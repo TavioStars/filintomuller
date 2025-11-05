@@ -11,7 +11,9 @@ import { ptBR } from "date-fns/locale";
 import type { DayModifiers } from "react-day-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
+import LoadingScreen from "@/components/LoadingScreen";
 
 type Period = "matutino" | "vespertino" | "noturno";
 
@@ -50,6 +52,7 @@ const Scheduling = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdmin();
   const { toast } = useToast();
   const [currentPeriod, setCurrentPeriod] = useState<Period>("matutino");
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -59,6 +62,7 @@ const Scheduling = () => {
   const [showClassDialog, setShowClassDialog] = useState(false);
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
   const currentTab = location.pathname === "/scheduling" ? "agendamento" : "menu";
 
   // Fetch bookings
@@ -87,6 +91,7 @@ const Scheduling = () => {
   }, []);
 
   const fetchBookings = async () => {
+    setLoading(true);
     const { data, error } = await supabase
       .from('bookings')
       .select(`
@@ -100,10 +105,12 @@ const Scheduling = () => {
 
     if (error) {
       console.error('Error fetching bookings:', error);
+      setLoading(false);
       return;
     }
 
     setBookings((data || []) as Booking[]);
+    setLoading(false);
   };
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -161,7 +168,16 @@ const Scheduling = () => {
     }
   };
 
-  const handleDeleteBooking = async (bookingId: string) => {
+  const handleDeleteBooking = async (bookingId: string, userId: string) => {
+    if (!isAdmin && user?.id !== userId) {
+      toast({
+        variant: "destructive",
+        title: "Acesso negado",
+        description: "Você não tem permissão para excluir este agendamento.",
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from('bookings')
       .delete()
@@ -251,6 +267,10 @@ const Scheduling = () => {
     handleDateSelect(day);
   };
 
+  if (adminLoading || loading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 pb-24 md:pb-8">
       <div className="max-w-6xl mx-auto">
@@ -326,7 +346,7 @@ const Scheduling = () => {
                         .filter(b => b.period === period)
                         .map((booking) => {
                           const resourceData = RESOURCES.find(r => r.label === booking.resource);
-                          const isOwner = user?.id === booking.user_id;
+                          const canDelete = isAdmin || user?.id === booking.user_id;
                           return (
                             <div
                               key={booking.id}
@@ -351,11 +371,11 @@ const Scheduling = () => {
                                     {booking.resource}
                                   </p>
                                 </div>
-                                {isOwner && (
+                                {canDelete && (
                                   <Button
                                     variant="destructive"
                                     size="icon"
-                                    onClick={() => handleDeleteBooking(booking.id)}
+                                    onClick={() => handleDeleteBooking(booking.id, booking.user_id)}
                                     className="shrink-0"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -420,7 +440,7 @@ const Scheduling = () => {
                     ) : (
                       classBookings.map((booking) => {
                         const resourceColor = RESOURCES.find(r => r.label === booking.resource)?.color || "bg-muted";
-                        const isOwner = user?.id === booking.user_id;
+                        const canDelete = isAdmin || user?.id === booking.user_id;
                         return (
                           <div key={booking.id} className={`p-3 rounded-lg border ${resourceColor}`}>
                             <div className="flex justify-between items-center gap-2">
@@ -434,11 +454,11 @@ const Scheduling = () => {
                                   </p>
                                 )}
                               </div>
-                              {isOwner && (
+                              {canDelete && (
                                 <Button
                                   variant="destructive"
                                   size="sm"
-                                  onClick={() => handleDeleteBooking(booking.id)}
+                                  onClick={() => handleDeleteBooking(booking.id, booking.user_id)}
                                   className="shrink-0"
                                 >
                                   <Trash2 className="h-3 w-3 mr-1" />

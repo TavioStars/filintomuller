@@ -4,12 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import LoadingScreen from "@/components/LoadingScreen";
 import logoImage from "@/assets/logo-filinto-muller.png";
 
 const Index = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [profile, setProfile] = useState<{ name: string; role: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) {
@@ -27,13 +29,14 @@ const Index = () => {
       if (data) {
         setProfile(data);
       }
+      setLoading(false);
     };
 
     fetchProfile();
   }, [user, navigate]);
 
-  if (!user || !profile) {
-    return null;
+  if (loading || !user || !profile) {
+    return <LoadingScreen />;
   }
 
   return (

@@ -1,11 +1,55 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Bell } from "lucide-react";
-import feiraProf from "@/assets/feira-profissoes.jpeg";
+import { ArrowLeft, Bell, ExternalLink } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAdmin } from "@/hooks/useAdmin";
+import { CreateNotificationDialog } from "@/components/CreateNotificationDialog";
+import LoadingScreen from "@/components/LoadingScreen";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface Notification {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  banner_image: string | null;
+  additional_images: string[] | null;
+  links: string[] | null;
+  created_at: string;
+}
 
 const Notifications = () => {
   const navigate = useNavigate();
+  const { isAdmin, loading: adminLoading } = useAdmin();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .order("date", { ascending: false });
+
+      if (error) throw error;
+      setNotifications(data || []);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  if (loading || adminLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 pb-24 md:pb-8">
@@ -19,25 +63,78 @@ const Notifications = () => {
           Voltar
         </Button>
 
-        <div className="flex items-center gap-3 mb-8">
-          <Bell className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Notificações</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <Bell className="h-8 w-8 text-amber-500" />
+            <h1 className="text-3xl font-bold text-foreground">Notificações</h1>
+          </div>
+          {isAdmin && <CreateNotificationDialog onCreated={fetchNotifications} />}
         </div>
 
         <div className="space-y-4">
-          <Card className="p-6">
-            <div className="flex flex-col gap-4">
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Quarta feira 5 de novembro</h3>
-                <p className="text-foreground">Feira das profissões na Unigran!</p>
+          {notifications.map((notification) => (
+            <Card key={notification.id} className="p-6">
+              <div className="flex flex-col gap-4">
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">{notification.title}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {new Date(notification.date).toLocaleDateString('pt-BR', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  <p className="text-foreground whitespace-pre-wrap">{notification.content}</p>
+                </div>
+                
+                {notification.banner_image && (
+                  <img 
+                    src={notification.banner_image}
+                    alt={notification.title}
+                    className="w-full h-auto rounded-lg"
+                  />
+                )}
+
+                {notification.additional_images && notification.additional_images.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {notification.additional_images.map((img, idx) => (
+                      <img
+                        key={idx}
+                        src={img}
+                        alt={`Imagem ${idx + 1}`}
+                        className="w-full h-32 object-cover rounded-lg"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {notification.links && notification.links.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">Links:</p>
+                    {notification.links.map((link, idx) => (
+                      <a
+                        key={idx}
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-primary hover:underline"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        {link}
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
-              <img 
-                src={feiraProf}
-                alt="Feira das Profissões Unigran 2025"
-                className="w-full h-auto rounded-lg"
-              />
-            </div>
-          </Card>
+            </Card>
+          ))}
+
+          {notifications.length === 0 && (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">Nenhuma notificação no momento</p>
+            </Card>
+          )}
         </div>
       </div>
     </div>

@@ -5,10 +5,10 @@ import logo from "@/assets/logo-filinto-muller.jpeg";
 
 const Index = () => {
   const navigate = useNavigate();
-  const userName = "Professor Silva"; // Mock user name
+  const userName = "Professora Simone";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/5 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/5 flex flex-col items-center justify-center p-4 gap-4">
       <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl">
         <img
           src={logo}
@@ -46,6 +46,10 @@ const Index = () => {
           </Button>
         </div>
       </Card>
+      
+      <p className="text-sm text-muted-foreground/60 text-center">
+        Desenvolvido por Otávio Henrique 3°B 2025
+      </p>
     </div>
   );
 };

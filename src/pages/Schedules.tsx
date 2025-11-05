@@ -27,11 +27,12 @@ const Schedules = () => {
             <h1 className="text-3xl font-bold text-foreground">Horários - Ensino Médio</h1>
           </div>
 
-          <Card className="p-4 overflow-hidden">
+          <Card className="p-4 overflow-auto">
             <img 
               src={horarioEnsinoMedio} 
               alt="Horários do Ensino Médio"
-              className="w-full h-auto rounded-lg"
+              className="w-full h-auto rounded-lg cursor-zoom-in hover:scale-105 transition-transform"
+              style={{ maxWidth: 'none', minWidth: '100%' }}
             />
           </Card>
         </div>

@@ -90,7 +90,10 @@ const Scheduling = () => {
   };
 
   const isClassAvailable = (classId: number, date: Date) => {
-    return !getBookingForClass(classId, date);
+    const dateStr = format(date, "yyyy-MM-dd");
+    const classBookings = bookings.filter(b => b.date === dateStr && b.class === classId);
+    // A aula só está indisponível se todos os 3 recursos foram agendados
+    return classBookings.length < RESOURCES.length;
   };
 
   const getDateBookingStatus = (date: Date) => {

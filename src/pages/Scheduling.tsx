@@ -4,16 +4,20 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CalendarDays, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { DayModifiers } from "react-day-picker";
+
+type Period = "matutino" | "vespertino" | "noturno";
 
 interface Booking {
   date: string;
   class: number;
   resource: string;
   user: string;
+  period: Period;
 }
 
 const CLASSES = [
@@ -22,6 +26,7 @@ const CLASSES = [
   { id: 3, label: "Aula 3" },
   { id: 4, label: "Aula 4" },
   { id: 5, label: "Aula 5" },
+  { id: 6, label: "Aula 6" },
 ];
 
 const RESOURCES = [
@@ -32,6 +37,7 @@ const RESOURCES = [
 
 const Scheduling = () => {
   const navigate = useNavigate();
+  const [currentPeriod, setCurrentPeriod] = useState<Period>("matutino");
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
   const [showActionDialog, setShowActionDialog] = useState(false);
@@ -71,6 +77,7 @@ const Scheduling = () => {
         class: selectedClass,
         resource: RESOURCES.find(r => r.id === resourceId)?.label || "",
         user: currentUser,
+        period: currentPeriod,
       };
       setBookings([...bookings, newBooking]);
       setShowResourceDialog(false);
@@ -79,41 +86,65 @@ const Scheduling = () => {
     }
   };
 
-  const getBookingsForDate = (date: Date) => {
+  const getBookingsForDate = (date: Date, period: Period) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    return bookings.filter(b => b.date === dateStr);
+    return bookings.filter(b => b.date === dateStr && b.period === period);
   };
 
-  const getBookingForClass = (classId: number, date: Date) => {
+  const getBookingForClass = (classId: number, date: Date, period: Period) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    return bookings.find(b => b.date === dateStr && b.class === classId);
+    return bookings.filter(b => b.date === dateStr && b.class === classId && b.period === period);
   };
 
-  const isClassAvailable = (classId: number, date: Date) => {
+  const isResourceAvailable = (resourceId: string, classId: number, date: Date, period: Period) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    const classBookings = bookings.filter(b => b.date === dateStr && b.class === classId);
+    const resourceLabel = RESOURCES.find(r => r.id === resourceId)?.label || "";
+    return !bookings.some(b => 
+      b.date === dateStr && 
+      b.class === classId && 
+      b.resource === resourceLabel && 
+      b.period === period
+    );
+  };
+
+  const isClassAvailable = (classId: number, date: Date, period: Period) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const classBookings = bookings.filter(b => b.date === dateStr && b.class === classId && b.period === period);
     // A aula só está indisponível se todos os 3 recursos foram agendados
     return classBookings.length < RESOURCES.length;
   };
 
-  const getDateBookingStatus = (date: Date) => {
-    const dateBookings = getBookingsForDate(date);
+  const getDateBookingStatus = (date: Date, period: Period) => {
+    const dateBookings = getBookingsForDate(date, period);
     if (dateBookings.length === 0) return null;
     
-    const uniqueResources = new Set(dateBookings.map(b => b.resource));
-    const allClassesBooked = dateBookings.length === CLASSES.length;
+    // Verificar se todas as aulas têm todos os recursos agendados (dia cinza)
+    const allClassesFullyBooked = CLASSES.every(classItem => {
+      const classBookings = dateBookings.filter(b => b.class === classItem.id);
+      return classBookings.length === RESOURCES.length;
+    });
     
-    if (allClassesBooked) return "full";
+    if (allClassesFullyBooked) return "unavailable";
+    
+    // Verificar se todas as 6 aulas têm algo agendado (dia vermelho)
+    const classesWithBookings = new Set(dateBookings.map(b => b.class));
+    if (classesWithBookings.size === CLASSES.length) return "full";
+    
+    // Se há múltiplos recursos diferentes (dia laranja)
+    const uniqueResources = new Set(dateBookings.map(b => b.resource));
     if (uniqueResources.size > 1) return "multiple";
+    
+    // Se há apenas um tipo de recurso agendado
     return dateBookings[0].resource;
   };
 
   const modifiers = {
-    meetingRoom: (date: Date) => getDateBookingStatus(date) === RESOURCES[0].label,
-    datashow1: (date: Date) => getDateBookingStatus(date) === RESOURCES[1].label,
-    datashow2: (date: Date) => getDateBookingStatus(date) === RESOURCES[2].label,
-    multiple: (date: Date) => getDateBookingStatus(date) === "multiple",
-    full: (date: Date) => getDateBookingStatus(date) === "full",
+    meetingRoom: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[0].label,
+    datashow1: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[1].label,
+    datashow2: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[2].label,
+    multiple: (date: Date) => getDateBookingStatus(date, currentPeriod) === "multiple",
+    full: (date: Date) => getDateBookingStatus(date, currentPeriod) === "full",
+    unavailable: (date: Date) => getDateBookingStatus(date, currentPeriod) === "unavailable",
   };
 
   const modifiersClassNames = {
@@ -121,11 +152,12 @@ const Scheduling = () => {
     datashow1: "bg-datashow-1/20 text-datashow-1 font-bold hover:bg-datashow-1/30",
     datashow2: "bg-datashow-2/20 text-datashow-2 font-bold hover:bg-datashow-2/30",
     multiple: "bg-orange-500/20 text-orange-600 font-bold hover:bg-orange-500/30",
-    full: "bg-destructive/20 text-destructive font-bold hover:bg-destructive/30 cursor-not-allowed",
+    full: "bg-destructive/20 text-destructive font-bold hover:bg-destructive/30",
+    unavailable: "bg-muted text-muted-foreground font-bold opacity-50 cursor-not-allowed",
   };
 
   const handleDayClick = (day: Date, modifiers: DayModifiers) => {
-    if (modifiers.full) return;
+    if (modifiers.unavailable) return;
     handleDateSelect(day);
   };
 
@@ -146,53 +178,67 @@ const Scheduling = () => {
           <h1 className="text-3xl font-bold text-foreground">Agendamento</h1>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Selecione uma data para agendar</h2>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onDayClick={handleDayClick}
-              className="rounded-md border"
-              locale={ptBR}
-              modifiers={modifiers}
-              modifiersClassNames={modifiersClassNames}
-            />
-          </Card>
+        <Tabs value={currentPeriod} onValueChange={(value) => setCurrentPeriod(value as Period)} className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="matutino">Matutino</TabsTrigger>
+            <TabsTrigger value="vespertino">Vespertino</TabsTrigger>
+            <TabsTrigger value="noturno">Noturno</TabsTrigger>
+          </TabsList>
 
-          <Card className="p-6 overflow-y-auto max-h-[600px]">
-            <h2 className="text-xl font-semibold mb-4">Agendamentos</h2>
-            <div className="space-y-3">
-              {bookings.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
-                  Nenhum agendamento ainda
-                </p>
-              ) : (
-                bookings.map((booking, index) => (
-                  <div
-                    key={index}
-                    className="p-4 bg-muted rounded-lg border border-border"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-semibold text-foreground">
-                          {format(new Date(booking.date), "dd/MM/yyyy", { locale: ptBR })}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Aula {booking.class}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-medium text-primary">{booking.resource}</p>
-                        <p className="text-sm text-muted-foreground">{booking.user}</p>
-                      </div>
-                    </div>
+          {(["matutino", "vespertino", "noturno"] as Period[]).map((period) => (
+            <TabsContent key={period} value={period} className="mt-0">
+              <div className="grid lg:grid-cols-2 gap-8">
+                <Card className="p-6">
+                  <h2 className="text-xl font-semibold mb-4">Selecione uma data para agendar</h2>
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onDayClick={handleDayClick}
+                    className="rounded-md border"
+                    locale={ptBR}
+                    modifiers={modifiers}
+                    modifiersClassNames={modifiersClassNames}
+                  />
+                </Card>
+
+                <Card className="p-6 overflow-y-auto max-h-[600px]">
+                  <h2 className="text-xl font-semibold mb-4">Agendamentos</h2>
+                  <div className="space-y-3">
+                    {bookings.filter(b => b.period === period).length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">
+                        Nenhum agendamento ainda
+                      </p>
+                    ) : (
+                      bookings
+                        .filter(b => b.period === period)
+                        .map((booking, index) => (
+                          <div
+                            key={index}
+                            className="p-4 bg-muted rounded-lg border border-border"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-semibold text-foreground">
+                                  {format(new Date(booking.date), "dd/MM/yyyy", { locale: ptBR })}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  Aula {booking.class}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium text-primary">{booking.resource}</p>
+                                <p className="text-sm text-muted-foreground">{booking.user}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                    )}
                   </div>
-                ))
-              )}
-            </div>
-          </Card>
-        </div>
+                </Card>
+              </div>
+            </TabsContent>
+          ))}
+        </Tabs>
 
         {/* Action Selection Dialog */}
         <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
@@ -229,23 +275,26 @@ const Scheduling = () => {
             </DialogHeader>
             <div className="grid gap-3 py-4 max-h-[400px] overflow-y-auto">
               {CLASSES.map((classItem) => {
-                const booking = selectedDate ? getBookingForClass(classItem.id, selectedDate) : null;
-                const resourceColor = booking 
-                  ? RESOURCES.find(r => r.label === booking.resource)?.color 
-                  : "bg-muted";
+                const classBookings = selectedDate ? getBookingForClass(classItem.id, selectedDate, currentPeriod) : [];
                 
                 return (
-                  <div
-                    key={classItem.id}
-                    className={`p-4 rounded-lg border ${resourceColor || "bg-muted"}`}
-                  >
-                    <p className="font-semibold text-lg text-white mb-1">{classItem.label}</p>
-                    {booking ? (
-                      <p className="text-sm text-white/90">
-                        {booking.resource} agendado por: {booking.user}
-                      </p>
+                  <div key={classItem.id} className="space-y-2">
+                    <p className="font-semibold text-lg">{classItem.label}</p>
+                    {classBookings.length === 0 ? (
+                      <div className="p-3 rounded-lg bg-muted border">
+                        <p className="text-sm text-muted-foreground">Disponível</p>
+                      </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">Disponível</p>
+                      classBookings.map((booking, idx) => {
+                        const resourceColor = RESOURCES.find(r => r.label === booking.resource)?.color || "bg-muted";
+                        return (
+                          <div key={idx} className={`p-3 rounded-lg border ${resourceColor}`}>
+                            <p className="text-sm text-white font-medium">
+                              {booking.resource} agendado por: {booking.user}
+                            </p>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 );
@@ -260,9 +309,9 @@ const Scheduling = () => {
             <DialogHeader>
               <DialogTitle>Selecione a Aula</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-3 py-4">
+            <div className="grid gap-3 py-4 max-h-[500px] overflow-y-auto">
               {CLASSES.map((classItem) => {
-                const isAvailable = selectedDate ? isClassAvailable(classItem.id, selectedDate) : true;
+                const isAvailable = selectedDate ? isClassAvailable(classItem.id, selectedDate, currentPeriod) : true;
                 return (
                   <Button
                     key={classItem.id}
@@ -291,15 +340,27 @@ const Scheduling = () => {
               <DialogTitle>Selecione o Recurso</DialogTitle>
             </DialogHeader>
             <div className="grid gap-3 py-4">
-              {RESOURCES.map((resource) => (
-                <Button
-                  key={resource.id}
-                  onClick={() => handleResourceSelect(resource.id)}
-                  className={`h-16 text-lg text-white font-semibold ${resource.color}`}
-                >
-                  {resource.label}
-                </Button>
-              ))}
+              {RESOURCES.map((resource) => {
+                const isAvailable = selectedDate && selectedClass 
+                  ? isResourceAvailable(resource.id, selectedClass, selectedDate, currentPeriod)
+                  : true;
+                
+                return (
+                  <Button
+                    key={resource.id}
+                    onClick={() => isAvailable && handleResourceSelect(resource.id)}
+                    disabled={!isAvailable}
+                    className={`h-16 text-lg text-white font-semibold ${
+                      isAvailable 
+                        ? resource.color 
+                        : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
+                    }`}
+                  >
+                    {resource.label}
+                    {!isAvailable && <span className="ml-2 text-xs">(Indisponível)</span>}
+                  </Button>
+                );
+              })}
             </div>
           </DialogContent>
         </Dialog>

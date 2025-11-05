@@ -23,10 +23,10 @@ const Menu = () => {
     },
     {
       icon: Bell,
-      title: "Avisos",
-      description: "Notificações importantes",
+      title: "Notificações",
+      description: "Veja eventos e avisos",
       color: "text-datashow-1",
-      onClick: () => {},
+      onClick: () => navigate("/notifications"),
     },
   ];
 

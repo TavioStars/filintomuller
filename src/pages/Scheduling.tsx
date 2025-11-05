@@ -33,8 +33,8 @@ const RESOURCES = [
   { id: "meeting-room", label: "Sala de Reunião", color: "bg-meeting-room hover:bg-meeting-room/90", textColor: "text-meeting-room" },
   { id: "datashow-1", label: "Datashow 1", color: "bg-datashow-1 hover:bg-datashow-1/90", textColor: "text-datashow-1" },
   { id: "datashow-2", label: "Datashow 2", color: "bg-datashow-2 hover:bg-datashow-2/90", textColor: "text-datashow-2" },
-  { id: "computer-room", label: "Sala de Informática", color: "bg-purple-600 hover:bg-purple-600/90", textColor: "text-purple-600" },
-  { id: "laboratory", label: "Laboratório", color: "bg-amber-600 hover:bg-amber-600/90", textColor: "text-amber-600" },
+  { id: "computer-room", label: "Sala de Informática", color: "bg-computer-room hover:bg-computer-room/90", textColor: "text-computer-room" },
+  { id: "laboratory", label: "Laboratório", color: "bg-laboratory hover:bg-laboratory/90", textColor: "text-laboratory" },
 ];
 
 const Scheduling = () => {
@@ -131,31 +131,13 @@ const Scheduling = () => {
     
     if (allClassesFullyBooked) return "unavailable";
     
-    // Contar recursos por tipo
-    const resourceCounts: { [key: string]: number } = {};
-    dateBookings.forEach(booking => {
-      resourceCounts[booking.resource] = (resourceCounts[booking.resource] || 0) + 1;
-    });
-    
-    // Verificar se algum recurso ocupa mais de 40% do total
-    for (const [resource, count] of Object.entries(resourceCounts)) {
-      if (count / totalPossibleBookings > 0.4) {
-        return resource; // Retorna o nome do recurso que domina
-      }
-    }
-    
-    // Se nenhum recurso domina, usar o sistema de cores por quantidade
+    // Sistema de cores baseado em quantidade total de agendamentos
     if (totalBookings <= 6) return "low"; // Verde
-    if (totalBookings <= 14) return "medium"; // Amarelo
-    return "high"; // Vermelho
+    if (totalBookings <= 12) return "medium"; // Amarelo
+    return "high"; // Vermelho (13-30)
   };
 
   const modifiers = {
-    meetingRoom: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[0].label,
-    datashow1: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[1].label,
-    datashow2: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[2].label,
-    computerRoom: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[3].label,
-    laboratory: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[4].label,
     low: (date: Date) => getDateBookingStatus(date, currentPeriod) === "low",
     medium: (date: Date) => getDateBookingStatus(date, currentPeriod) === "medium",
     high: (date: Date) => getDateBookingStatus(date, currentPeriod) === "high",
@@ -163,14 +145,9 @@ const Scheduling = () => {
   };
 
   const modifiersClassNames = {
-    meetingRoom: "bg-meeting-room/20 text-meeting-room font-bold hover:bg-meeting-room/30",
-    datashow1: "bg-datashow-1/20 text-datashow-1 font-bold hover:bg-datashow-1/30",
-    datashow2: "bg-datashow-2/20 text-datashow-2 font-bold hover:bg-datashow-2/30",
-    computerRoom: "bg-purple-600/20 text-purple-600 font-bold hover:bg-purple-600/30",
-    laboratory: "bg-amber-600/20 text-amber-600 font-bold hover:bg-amber-600/30",
-    low: "bg-green-500/20 text-green-600 font-bold hover:bg-green-500/30",
-    medium: "bg-yellow-500/20 text-yellow-600 font-bold hover:bg-yellow-500/30",
-    high: "bg-red-500/20 text-red-600 font-bold hover:bg-red-500/30",
+    low: "bg-primary/20 text-primary font-bold hover:bg-primary/30",
+    medium: "bg-laboratory/20 text-laboratory font-bold hover:bg-laboratory/30",
+    high: "bg-destructive/20 text-destructive font-bold hover:bg-destructive/30",
     unavailable: "bg-muted text-muted-foreground font-bold opacity-50 cursor-not-allowed",
   };
 
@@ -206,17 +183,19 @@ const Scheduling = () => {
           {(["matutino", "vespertino", "noturno"] as Period[]).map((period) => (
             <TabsContent key={period} value={period} className="mt-0">
               <div className="grid lg:grid-cols-2 gap-8">
-                <Card className="p-6">
-                  <h2 className="text-xl font-semibold mb-4">Selecione uma data para agendar</h2>
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onDayClick={handleDayClick}
-                    className="rounded-md border"
-                    locale={ptBR}
-                    modifiers={modifiers}
-                    modifiersClassNames={modifiersClassNames}
-                  />
+                <Card className="p-6 flex justify-center items-start">
+                  <div className="w-full">
+                    <h2 className="text-xl font-semibold mb-4">Selecione uma data para agendar</h2>
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onDayClick={handleDayClick}
+                      className="rounded-md border mx-auto scale-110 md:scale-125"
+                      locale={ptBR}
+                      modifiers={modifiers}
+                      modifiersClassNames={modifiersClassNames}
+                    />
+                  </div>
                 </Card>
 
                 <Card className="p-6 overflow-y-auto max-h-[600px]">

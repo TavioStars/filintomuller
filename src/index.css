@@ -39,6 +39,8 @@ All colors MUST be HSL.
     --meeting-room: 280 65% 60%;
     --datashow-1: 200 70% 50%;
     --datashow-2: 30 85% 55%;
+    --computer-room: 330 70% 60%;
+    --laboratory: 45 85% 60%;
 
     --radius: 0.5rem;
 
@@ -91,6 +93,8 @@ All colors MUST be HSL.
     --meeting-room: 280 65% 60%;
     --datashow-1: 200 70% 50%;
     --datashow-2: 30 85% 55%;
+    --computer-room: 330 70% 60%;
+    --laboratory: 45 85% 60%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;

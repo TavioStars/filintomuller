@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MenuSquare, BookOpen, Clock, Bell, ArrowLeft } from "lucide-react";
+import { MenuSquare, BookOpen, Clock, Bell, ArrowLeft, Settings } from "lucide-react";
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -27,6 +27,13 @@ const Menu = () => {
       description: "Veja eventos e avisos",
       color: "text-datashow-1",
       onClick: () => navigate("/notifications"),
+    },
+    {
+      icon: Settings,
+      title: "Configurações",
+      description: "Personalize o aplicativo",
+      color: "text-muted-foreground",
+      onClick: () => navigate("/settings"),
     },
   ];
 

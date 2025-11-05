@@ -10,6 +10,7 @@ import Menu from "./pages/Menu";
 import Scheduling from "./pages/Scheduling";
 import Schedules from "./pages/Schedules";
 import Notifications from "./pages/Notifications";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
 
@@ -73,6 +74,7 @@ const App = () => {
               />
               <Route path="/schedules" element={<Schedules />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

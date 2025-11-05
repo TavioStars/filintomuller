@@ -60,6 +60,8 @@ export default {
         "meeting-room": "hsl(var(--meeting-room))",
         "datashow-1": "hsl(var(--datashow-1))",
         "datashow-2": "hsl(var(--datashow-2))",
+        "computer-room": "hsl(var(--computer-room))",
+        "laboratory": "hsl(var(--laboratory))",
       },
       borderRadius: {
         lg: "var(--radius)",

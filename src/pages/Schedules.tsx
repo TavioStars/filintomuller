@@ -40,19 +40,20 @@ const Schedules = () => {
           </Card>
 
           <Dialog open={fullscreen} onOpenChange={setFullscreen}>
-            <DialogContent className="max-w-[95vw] max-h-[95vh] w-fit h-fit p-0 border-none">
+            <DialogContent className="max-w-[95vw] max-h-[95vh] w-fit h-fit p-2 border-none overflow-auto">
               <Button
                 onClick={() => setFullscreen(false)}
                 variant="ghost"
                 size="icon"
-                className="absolute top-2 right-2 z-50 bg-background/80 hover:bg-background rounded-full"
+                className="absolute top-4 right-4 z-50 bg-background/80 hover:bg-background rounded-full"
               >
                 <X className="h-4 w-4" />
               </Button>
               <img 
                 src={horarioEnsinoMedio} 
                 alt="Horários do Ensino Médio"
-                className="w-full h-full object-contain rounded-lg"
+                className="w-auto h-auto max-w-none rounded-lg cursor-zoom-in"
+                style={{ minWidth: '200%' }}
               />
             </DialogContent>
           </Dialog>

@@ -1,11 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { DayModifiers } from "react-day-picker";
 
 interface Booking {
   date: string;
@@ -29,6 +31,7 @@ const RESOURCES = [
 ];
 
 const Scheduling = () => {
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
   const [showActionDialog, setShowActionDialog] = useState(false);
@@ -36,7 +39,7 @@ const Scheduling = () => {
   const [showClassDialog, setShowClassDialog] = useState(false);
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const currentUser = "Professor Silva"; // Mock user
+  const currentUser = "Professora Simone";
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
@@ -86,9 +89,55 @@ const Scheduling = () => {
     return bookings.find(b => b.date === dateStr && b.class === classId);
   };
 
+  const isClassAvailable = (classId: number, date: Date) => {
+    return !getBookingForClass(classId, date);
+  };
+
+  const getDateBookingStatus = (date: Date) => {
+    const dateBookings = getBookingsForDate(date);
+    if (dateBookings.length === 0) return null;
+    
+    const uniqueResources = new Set(dateBookings.map(b => b.resource));
+    const allClassesBooked = dateBookings.length === CLASSES.length;
+    
+    if (allClassesBooked) return "full";
+    if (uniqueResources.size > 1) return "multiple";
+    return dateBookings[0].resource;
+  };
+
+  const modifiers = {
+    meetingRoom: (date: Date) => getDateBookingStatus(date) === RESOURCES[0].label,
+    datashow1: (date: Date) => getDateBookingStatus(date) === RESOURCES[1].label,
+    datashow2: (date: Date) => getDateBookingStatus(date) === RESOURCES[2].label,
+    multiple: (date: Date) => getDateBookingStatus(date) === "multiple",
+    full: (date: Date) => getDateBookingStatus(date) === "full",
+  };
+
+  const modifiersClassNames = {
+    meetingRoom: "bg-meeting-room/20 text-meeting-room font-bold hover:bg-meeting-room/30",
+    datashow1: "bg-datashow-1/20 text-datashow-1 font-bold hover:bg-datashow-1/30",
+    datashow2: "bg-datashow-2/20 text-datashow-2 font-bold hover:bg-datashow-2/30",
+    multiple: "bg-orange-500/20 text-orange-600 font-bold hover:bg-orange-500/30",
+    full: "bg-destructive/20 text-destructive font-bold hover:bg-destructive/30 cursor-not-allowed",
+  };
+
+  const handleDayClick = (day: Date, modifiers: DayModifiers) => {
+    if (modifiers.full) return;
+    handleDateSelect(day);
+  };
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="min-h-screen bg-background p-4 md:p-8 pb-24 md:pb-8">
       <div className="max-w-6xl mx-auto">
+        <Button
+          onClick={() => navigate("/menu")}
+          variant="ghost"
+          className="mb-4 gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Button>
+
         <div className="flex items-center gap-3 mb-8">
           <CalendarDays className="h-8 w-8 text-primary" />
           <h1 className="text-3xl font-bold text-foreground">Agendamento</h1>
@@ -100,9 +149,11 @@ const Scheduling = () => {
             <Calendar
               mode="single"
               selected={selectedDate}
-              onSelect={handleDateSelect}
+              onDayClick={handleDayClick}
               className="rounded-md border"
               locale={ptBR}
+              modifiers={modifiers}
+              modifiersClassNames={modifiersClassNames}
             />
           </Card>
 
@@ -207,16 +258,25 @@ const Scheduling = () => {
               <DialogTitle>Selecione a Aula</DialogTitle>
             </DialogHeader>
             <div className="grid gap-3 py-4">
-              {CLASSES.map((classItem) => (
-                <Button
-                  key={classItem.id}
-                  onClick={() => handleClassSelect(classItem.id)}
-                  variant="outline"
-                  className="h-16 text-lg hover:bg-primary hover:text-primary-foreground transition-colors"
-                >
-                  {classItem.label}
-                </Button>
-              ))}
+              {CLASSES.map((classItem) => {
+                const isAvailable = selectedDate ? isClassAvailable(classItem.id, selectedDate) : true;
+                return (
+                  <Button
+                    key={classItem.id}
+                    onClick={() => isAvailable && handleClassSelect(classItem.id)}
+                    variant="outline"
+                    disabled={!isAvailable}
+                    className={`h-16 text-lg transition-colors ${
+                      isAvailable 
+                        ? "hover:bg-primary hover:text-primary-foreground" 
+                        : "opacity-50 cursor-not-allowed bg-muted"
+                    }`}
+                  >
+                    {classItem.label}
+                    {!isAvailable && <span className="ml-2 text-xs">(Indisponível)</span>}
+                  </Button>
+                );
+              })}
             </div>
           </DialogContent>
         </Dialog>

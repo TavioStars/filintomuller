@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Menu from "./pages/Menu";
 import Scheduling from "./pages/Scheduling";
+import Schedules from "./pages/Schedules";
 import NotFound from "./pages/NotFound";
 import Navigation from "./components/Navigation";
 
@@ -52,6 +53,7 @@ const App = () => (
                 </>
               }
             />
+            <Route path="/schedules" element={<Schedules />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>

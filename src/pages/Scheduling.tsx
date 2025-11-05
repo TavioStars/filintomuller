@@ -1,23 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CalendarDays, ArrowLeft } from "lucide-react";
+import { CalendarDays, ArrowLeft, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { DayModifiers } from "react-day-picker";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 type Period = "matutino" | "vespertino" | "noturno";
 
 interface Booking {
+  id: string;
   date: string;
-  class: number;
+  class_name: string;
   resource: string;
-  user: string;
+  user_id: string;
   period: Period;
+  created_at: string;
 }
 
 const CLASSES = [
@@ -39,6 +44,8 @@ const RESOURCES = [
 
 const Scheduling = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [currentPeriod, setCurrentPeriod] = useState<Period>("matutino");
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedClass, setSelectedClass] = useState<number | null>(null);
@@ -47,7 +54,45 @@ const Scheduling = () => {
   const [showClassDialog, setShowClassDialog] = useState(false);
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const currentUser = "Professora Simone";
+
+  // Fetch bookings
+  useEffect(() => {
+    fetchBookings();
+
+    // Realtime subscription
+    const channel = supabase
+      .channel('bookings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings'
+        },
+        () => {
+          fetchBookings();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchBookings = async () => {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching bookings:', error);
+      return;
+    }
+
+    setBookings((data || []) as Booking[]);
+  };
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
@@ -72,20 +117,57 @@ const Scheduling = () => {
     setShowResourceDialog(true);
   };
 
-  const handleResourceSelect = (resourceId: string) => {
-    if (selectedDate && selectedClass) {
-      const newBooking: Booking = {
-        date: format(selectedDate, "yyyy-MM-dd"),
-        class: selectedClass,
-        resource: RESOURCES.find(r => r.id === resourceId)?.label || "",
-        user: currentUser,
-        period: currentPeriod,
-      };
-      setBookings([...bookings, newBooking]);
+  const handleResourceSelect = async (resourceId: string) => {
+    if (selectedDate && selectedClass && user) {
+      const { error } = await supabase
+        .from('bookings')
+        .insert({
+          date: format(selectedDate, "yyyy-MM-dd"),
+          class_name: `Aula ${selectedClass}`,
+          resource: RESOURCES.find(r => r.id === resourceId)?.label || "",
+          user_id: user.id,
+          period: currentPeriod,
+        });
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Erro ao agendar",
+          description: error.message,
+        });
+        return;
+      }
+
+      toast({
+        title: "Agendado!",
+        description: "Recurso agendado com sucesso.",
+      });
+
       setShowResourceDialog(false);
       setSelectedClass(null);
       setSelectedDate(undefined);
     }
+  };
+
+  const handleDeleteBooking = async (bookingId: string) => {
+    const { error } = await supabase
+      .from('bookings')
+      .delete()
+      .eq('id', bookingId);
+
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao remover",
+        description: error.message,
+      });
+      return;
+    }
+
+    toast({
+      title: "Removido!",
+      description: "Agendamento removido com sucesso.",
+    });
   };
 
   const getBookingsForDate = (date: Date, period: Period) => {
@@ -93,17 +175,18 @@ const Scheduling = () => {
     return bookings.filter(b => b.date === dateStr && b.period === period);
   };
 
-  const getBookingForClass = (classId: number, date: Date, period: Period) => {
+  const getBookingForClass = (className: string, date: Date, period: Period) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    return bookings.filter(b => b.date === dateStr && b.class === classId && b.period === period);
+    return bookings.filter(b => b.date === dateStr && b.class_name === className && b.period === period);
   };
 
   const isResourceAvailable = (resourceId: string, classId: number, date: Date, period: Period) => {
     const dateStr = format(date, "yyyy-MM-dd");
     const resourceLabel = RESOURCES.find(r => r.id === resourceId)?.label || "";
+    const className = `Aula ${classId}`;
     return !bookings.some(b => 
       b.date === dateStr && 
-      b.class === classId && 
+      b.class_name === className && 
       b.resource === resourceLabel && 
       b.period === period
     );
@@ -111,8 +194,8 @@ const Scheduling = () => {
 
   const isClassAvailable = (classId: number, date: Date, period: Period) => {
     const dateStr = format(date, "yyyy-MM-dd");
-    const classBookings = bookings.filter(b => b.date === dateStr && b.class === classId && b.period === period);
-    // A aula só está indisponível se todos os 5 recursos foram agendados
+    const className = `Aula ${classId}`;
+    const classBookings = bookings.filter(b => b.date === dateStr && b.class_name === className && b.period === period);
     return classBookings.length < RESOURCES.length;
   };
 
@@ -125,7 +208,7 @@ const Scheduling = () => {
     
     // Verificar se todas as aulas têm todos os recursos agendados (dia cinza indisponível)
     const allClassesFullyBooked = CLASSES.every(classItem => {
-      const classBookings = dateBookings.filter(b => b.class === classItem.id);
+      const classBookings = dateBookings.filter(b => b.class_name === classItem.label);
       return classBookings.length === RESOURCES.length;
     });
     
@@ -182,15 +265,15 @@ const Scheduling = () => {
 
           {(["matutino", "vespertino", "noturno"] as Period[]).map((period) => (
             <TabsContent key={period} value={period} className="mt-0">
-              <div className="grid lg:grid-cols-2 gap-8">
-                <Card className="p-6 flex justify-center items-start">
-                  <div className="w-full">
+              <div className="flex flex-col lg:flex-row gap-8">
+                <Card className="p-6 flex-1 flex justify-center items-start">
+                  <div className="w-full max-w-md mx-auto">
                     <h2 className="text-xl font-semibold mb-4">Selecione uma data para agendar</h2>
                     <Calendar
                       mode="single"
                       selected={selectedDate}
                       onDayClick={handleDayClick}
-                      className="rounded-md border mx-auto scale-110 md:scale-125"
+                      className="rounded-md border w-full"
                       locale={ptBR}
                       modifiers={modifiers}
                       modifiersClassNames={modifiersClassNames}
@@ -198,7 +281,7 @@ const Scheduling = () => {
                   </div>
                 </Card>
 
-                <Card className="p-6 overflow-y-auto max-h-[600px]">
+                <Card className="p-6 flex-1 overflow-y-auto max-h-[600px]">
                   <h2 className="text-xl font-semibold mb-4">Agendamentos</h2>
                   <div className="space-y-3">
                     {bookings.filter(b => b.period === period).length === 0 ? (
@@ -208,29 +291,38 @@ const Scheduling = () => {
                     ) : (
                       bookings
                         .filter(b => b.period === period)
-                        .reverse()
-                        .map((booking, index) => {
+                        .map((booking) => {
                           const resourceData = RESOURCES.find(r => r.label === booking.resource);
+                          const isOwner = user?.id === booking.user_id;
                           return (
                             <div
-                              key={index}
+                              key={booking.id}
                               className="p-4 bg-muted rounded-lg border border-border"
                             >
-                              <div className="flex justify-between items-start">
-                                <div>
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="flex-1">
                                   <p className="font-semibold text-foreground">
                                     {format(new Date(booking.date), "dd/MM/yyyy", { locale: ptBR })}
                                   </p>
                                   <p className="text-sm text-muted-foreground">
-                                    Aula {booking.class}
+                                    {booking.class_name}
                                   </p>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right flex-1">
                                   <p className={`font-medium ${resourceData?.textColor || "text-primary"}`}>
                                     {booking.resource}
                                   </p>
-                                  <p className="text-sm text-muted-foreground">{booking.user}</p>
                                 </div>
+                                {isOwner && (
+                                  <Button
+                                    variant="destructive"
+                                    size="icon"
+                                    onClick={() => handleDeleteBooking(booking.id)}
+                                    className="shrink-0"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           );
@@ -278,7 +370,7 @@ const Scheduling = () => {
             </DialogHeader>
             <div className="grid gap-3 py-4 max-h-[400px] overflow-y-auto">
               {CLASSES.map((classItem) => {
-                const classBookings = selectedDate ? getBookingForClass(classItem.id, selectedDate, currentPeriod) : [];
+                const classBookings = selectedDate ? getBookingForClass(classItem.label, selectedDate, currentPeriod) : [];
                 
                 return (
                   <div key={classItem.id} className="space-y-2">
@@ -288,13 +380,24 @@ const Scheduling = () => {
                         <p className="text-sm text-muted-foreground">Disponível</p>
                       </div>
                     ) : (
-                      classBookings.map((booking, idx) => {
+                      classBookings.map((booking) => {
                         const resourceColor = RESOURCES.find(r => r.label === booking.resource)?.color || "bg-muted";
+                        const isOwner = user?.id === booking.user_id;
                         return (
-                          <div key={idx} className={`p-3 rounded-lg border ${resourceColor}`}>
+                          <div key={booking.id} className={`p-3 rounded-lg border ${resourceColor} flex justify-between items-center gap-2`}>
                             <p className="text-sm text-white font-medium">
-                              {booking.resource} agendado por: {booking.user}
+                              {booking.resource}
                             </p>
+                            {isOwner && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteBooking(booking.id)}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                Remover
+                              </Button>
+                            )}
                           </div>
                         );
                       })

@@ -1,55 +1,48 @@
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import logo from "@/assets/logo-filinto-muller.png";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import logoImage from "@/assets/logo-filinto-muller.png";
 
 const Index = () => {
   const navigate = useNavigate();
-  const userName = "Professora Simone";
+  const { user } = useAuth();
 
+  useEffect(() => {
+    if (user) {
+      navigate("/menu");
+    }
+  }, [user, navigate]);
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-secondary/5 flex flex-col items-center justify-center p-4 gap-4">
-      <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-xl">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="text-center space-y-6 max-w-md">
         <img
-          src={logo}
+          src={logoImage}
           alt="Escola Estadual Senador Filinto Müller"
-          className="w-48 h-48 mx-auto object-contain"
+          className="w-64 h-64 mx-auto object-contain"
         />
         
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">
+          <h1 className="text-4xl font-bold text-foreground">
             Bem-vindo!
           </h1>
-          <p className="text-xl text-primary font-semibold">
-            {userName}
-          </p>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-lg">
             Escola Estadual Senador Filinto Müller
           </p>
         </div>
 
-        <div className="space-y-3 pt-4">
-          <Button
-            onClick={() => navigate("/scheduling")}
-            className="w-full h-12 text-lg"
-            size="lg"
-          >
-            Acessar Agendamento
-          </Button>
-          <Button
-            onClick={() => navigate("/menu")}
-            variant="outline"
-            className="w-full h-12 text-lg"
-            size="lg"
-          >
-            Ver Menu
-          </Button>
-        </div>
-      </Card>
-      
-      <p className="text-sm text-muted-foreground/60 text-center">
-        Desenvolvido por Otávio Henrique 3°B 2025
-      </p>
+        <Button 
+          size="lg"
+          onClick={() => navigate("/auth")}
+          className="text-lg px-8 py-6 hover:scale-105 transition-transform"
+        >
+          Entrar no Aplicativo
+        </Button>
+
+        <p className="text-sm text-muted-foreground/60 pt-4">
+          Feito por Otávio do 3 B 2025
+        </p>
+      </div>
     </div>
   );
 };

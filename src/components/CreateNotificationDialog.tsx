@@ -7,6 +7,40 @@ import { Label } from "@/components/ui/label";
 import { Plus, Upload, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+// Validation schema
+const notificationSchema = z.object({
+  title: z.string().trim()
+    .min(1, "Título é obrigatório")
+    .max(200, "Título muito longo (máximo 200 caracteres)"),
+  content: z.string().trim()
+    .min(1, "Conteúdo é obrigatório")
+    .max(10000, "Conteúdo muito longo (máximo 10.000 caracteres)"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+  links: z.array(
+    z.string().url("URL inválida").or(z.literal(""))
+  ).max(10, "Máximo de 10 links")
+});
+
+// File validation constants
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+// File validation function
+const validateImageFile = (file: File): File => {
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error(`Arquivo muito grande (máximo 5MB): ${file.name}`);
+  }
+  
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+    throw new Error(`Tipo de arquivo não permitido: ${file.type}`);
+  }
+  
+  // Sanitize filename
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+  return new File([file], sanitizedName, { type: file.type });
+};
 
 export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void }) => {
   const [open, setOpen] = useState(false);
@@ -21,6 +55,54 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form data
+    const filteredLinks = links.filter(link => link.trim() !== "");
+    const result = notificationSchema.safeParse({
+      title,
+      content,
+      date,
+      links: filteredLinks
+    });
+    
+    if (!result.success) {
+      const errors = result.error.errors.map(err => err.message).join(". ");
+      toast({
+        variant: "destructive",
+        title: "Erro de validação",
+        description: errors,
+      });
+      return;
+    }
+    
+    // Validate banner image
+    if (bannerImage) {
+      try {
+        validateImageFile(bannerImage);
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Erro no arquivo",
+          description: error instanceof Error ? error.message : "Arquivo inválido",
+        });
+        return;
+      }
+    }
+    
+    // Validate additional images
+    for (const img of additionalImages) {
+      try {
+        validateImageFile(img);
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Erro no arquivo",
+          description: error instanceof Error ? error.message : "Arquivo inválido",
+        });
+        return;
+      }
+    }
+    
     setLoading(true);
 
     try {
@@ -59,16 +141,16 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
         additionalUrls.push(publicUrl);
       }
 
-      const filteredLinks = links.filter(link => link.trim() !== "");
-
       const { error } = await supabase.from("notifications").insert({
         created_by: user.id,
-        title,
-        content,
-        date,
+        title: result.data.title,
+        content: result.data.content,
+        date: result.data.date,
         banner_image: bannerUrl,
         additional_images: additionalUrls.length > 0 ? additionalUrls : null,
-        links: filteredLinks.length > 0 ? filteredLinks : null,
+        links: result.data.links.filter(link => link.trim() !== "").length > 0 
+          ? result.data.links.filter(link => link.trim() !== "") 
+          : null,
       });
 
       if (error) throw error;

@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Clock } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ArrowLeft, Clock, X } from "lucide-react";
 import horarioEnsinoMedio from "@/assets/horario-ensino-medio.jpg";
 
 const Schedules = () => {
   const navigate = useNavigate();
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
 
   if (selectedLevel === "medio") {
     return (
@@ -33,8 +35,27 @@ const Schedules = () => {
               alt="Horários do Ensino Médio"
               className="w-full h-auto rounded-lg cursor-zoom-in hover:scale-105 transition-transform"
               style={{ maxWidth: 'none', minWidth: '100%' }}
+              onClick={() => setFullscreen(true)}
             />
           </Card>
+
+          <Dialog open={fullscreen} onOpenChange={setFullscreen}>
+            <DialogContent className="max-w-[95vw] max-h-[95vh] w-fit h-fit p-0 border-none">
+              <Button
+                onClick={() => setFullscreen(false)}
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 z-50 bg-background/80 hover:bg-background rounded-full"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <img 
+                src={horarioEnsinoMedio} 
+                alt="Horários do Ensino Médio"
+                className="w-full h-full object-contain rounded-lg"
+              />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     );

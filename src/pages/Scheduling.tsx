@@ -30,9 +30,11 @@ const CLASSES = [
 ];
 
 const RESOURCES = [
-  { id: "meeting-room", label: "Sala de Reunião", color: "bg-meeting-room hover:bg-meeting-room/90" },
-  { id: "datashow-1", label: "Datashow 1", color: "bg-datashow-1 hover:bg-datashow-1/90" },
-  { id: "datashow-2", label: "Datashow 2", color: "bg-datashow-2 hover:bg-datashow-2/90" },
+  { id: "meeting-room", label: "Sala de Reunião", color: "bg-meeting-room hover:bg-meeting-room/90", textColor: "text-meeting-room" },
+  { id: "datashow-1", label: "Datashow 1", color: "bg-datashow-1 hover:bg-datashow-1/90", textColor: "text-datashow-1" },
+  { id: "datashow-2", label: "Datashow 2", color: "bg-datashow-2 hover:bg-datashow-2/90", textColor: "text-datashow-2" },
+  { id: "computer-room", label: "Sala de Informática", color: "bg-purple-600 hover:bg-purple-600/90", textColor: "text-purple-600" },
+  { id: "laboratory", label: "Laboratório", color: "bg-amber-600 hover:bg-amber-600/90", textColor: "text-amber-600" },
 ];
 
 const Scheduling = () => {
@@ -110,7 +112,7 @@ const Scheduling = () => {
   const isClassAvailable = (classId: number, date: Date, period: Period) => {
     const dateStr = format(date, "yyyy-MM-dd");
     const classBookings = bookings.filter(b => b.date === dateStr && b.class === classId && b.period === period);
-    // A aula só está indisponível se todos os 3 recursos foram agendados
+    // A aula só está indisponível se todos os 5 recursos foram agendados
     return classBookings.length < RESOURCES.length;
   };
 
@@ -118,7 +120,10 @@ const Scheduling = () => {
     const dateBookings = getBookingsForDate(date, period);
     if (dateBookings.length === 0) return null;
     
-    // Verificar se todas as aulas têm todos os recursos agendados (dia cinza)
+    const totalPossibleBookings = CLASSES.length * RESOURCES.length; // 6 aulas x 5 recursos = 30
+    const totalBookings = dateBookings.length;
+    
+    // Verificar se todas as aulas têm todos os recursos agendados (dia cinza indisponível)
     const allClassesFullyBooked = CLASSES.every(classItem => {
       const classBookings = dateBookings.filter(b => b.class === classItem.id);
       return classBookings.length === RESOURCES.length;
@@ -126,24 +131,34 @@ const Scheduling = () => {
     
     if (allClassesFullyBooked) return "unavailable";
     
-    // Verificar se todas as 6 aulas têm algo agendado (dia vermelho)
-    const classesWithBookings = new Set(dateBookings.map(b => b.class));
-    if (classesWithBookings.size === CLASSES.length) return "full";
+    // Contar recursos por tipo
+    const resourceCounts: { [key: string]: number } = {};
+    dateBookings.forEach(booking => {
+      resourceCounts[booking.resource] = (resourceCounts[booking.resource] || 0) + 1;
+    });
     
-    // Se há múltiplos recursos diferentes (dia laranja)
-    const uniqueResources = new Set(dateBookings.map(b => b.resource));
-    if (uniqueResources.size > 1) return "multiple";
+    // Verificar se algum recurso ocupa mais de 40% do total
+    for (const [resource, count] of Object.entries(resourceCounts)) {
+      if (count / totalPossibleBookings > 0.4) {
+        return resource; // Retorna o nome do recurso que domina
+      }
+    }
     
-    // Se há apenas um tipo de recurso agendado
-    return dateBookings[0].resource;
+    // Se nenhum recurso domina, usar o sistema de cores por quantidade
+    if (totalBookings <= 6) return "low"; // Verde
+    if (totalBookings <= 14) return "medium"; // Amarelo
+    return "high"; // Vermelho
   };
 
   const modifiers = {
     meetingRoom: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[0].label,
     datashow1: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[1].label,
     datashow2: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[2].label,
-    multiple: (date: Date) => getDateBookingStatus(date, currentPeriod) === "multiple",
-    full: (date: Date) => getDateBookingStatus(date, currentPeriod) === "full",
+    computerRoom: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[3].label,
+    laboratory: (date: Date) => getDateBookingStatus(date, currentPeriod) === RESOURCES[4].label,
+    low: (date: Date) => getDateBookingStatus(date, currentPeriod) === "low",
+    medium: (date: Date) => getDateBookingStatus(date, currentPeriod) === "medium",
+    high: (date: Date) => getDateBookingStatus(date, currentPeriod) === "high",
     unavailable: (date: Date) => getDateBookingStatus(date, currentPeriod) === "unavailable",
   };
 
@@ -151,8 +166,11 @@ const Scheduling = () => {
     meetingRoom: "bg-meeting-room/20 text-meeting-room font-bold hover:bg-meeting-room/30",
     datashow1: "bg-datashow-1/20 text-datashow-1 font-bold hover:bg-datashow-1/30",
     datashow2: "bg-datashow-2/20 text-datashow-2 font-bold hover:bg-datashow-2/30",
-    multiple: "bg-orange-500/20 text-orange-600 font-bold hover:bg-orange-500/30",
-    full: "bg-destructive/20 text-destructive font-bold hover:bg-destructive/30",
+    computerRoom: "bg-purple-600/20 text-purple-600 font-bold hover:bg-purple-600/30",
+    laboratory: "bg-amber-600/20 text-amber-600 font-bold hover:bg-amber-600/30",
+    low: "bg-green-500/20 text-green-600 font-bold hover:bg-green-500/30",
+    medium: "bg-yellow-500/20 text-yellow-600 font-bold hover:bg-yellow-500/30",
+    high: "bg-red-500/20 text-red-600 font-bold hover:bg-red-500/30",
     unavailable: "bg-muted text-muted-foreground font-bold opacity-50 cursor-not-allowed",
   };
 
@@ -211,27 +229,33 @@ const Scheduling = () => {
                     ) : (
                       bookings
                         .filter(b => b.period === period)
-                        .map((booking, index) => (
-                          <div
-                            key={index}
-                            className="p-4 bg-muted rounded-lg border border-border"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-semibold text-foreground">
-                                  {format(new Date(booking.date), "dd/MM/yyyy", { locale: ptBR })}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  Aula {booking.class}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-medium text-primary">{booking.resource}</p>
-                                <p className="text-sm text-muted-foreground">{booking.user}</p>
+                        .reverse()
+                        .map((booking, index) => {
+                          const resourceData = RESOURCES.find(r => r.label === booking.resource);
+                          return (
+                            <div
+                              key={index}
+                              className="p-4 bg-muted rounded-lg border border-border"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-semibold text-foreground">
+                                    {format(new Date(booking.date), "dd/MM/yyyy", { locale: ptBR })}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">
+                                    Aula {booking.class}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className={`font-medium ${resourceData?.textColor || "text-primary"}`}>
+                                    {booking.resource}
+                                  </p>
+                                  <p className="text-sm text-muted-foreground">{booking.user}</p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                     )}
                   </div>
                 </Card>

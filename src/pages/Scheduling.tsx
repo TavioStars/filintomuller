@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CalendarDays, ArrowLeft, Trash2 } from "lucide-react";
+import { CalendarDays, ArrowLeft, Trash2, BookOpen, Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { DayModifiers } from "react-day-picker";
@@ -48,6 +48,7 @@ const RESOURCES = [
 
 const Scheduling = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const [currentPeriod, setCurrentPeriod] = useState<Period>("matutino");
@@ -58,6 +59,7 @@ const Scheduling = () => {
   const [showClassDialog, setShowClassDialog] = useState(false);
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const currentTab = location.pathname === "/scheduling" ? "agendamento" : "menu";
 
   // Fetch bookings
   useEffect(() => {
@@ -253,13 +255,34 @@ const Scheduling = () => {
     <div className="min-h-screen bg-background p-4 md:p-8 pb-24 md:pb-8">
       <div className="max-w-6xl mx-auto">
         <Button
-          onClick={() => navigate("/menu")}
+          onClick={() => navigate("/")}
           variant="ghost"
           className="mb-4 gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           Voltar
         </Button>
+
+        <Tabs value={currentTab} className="w-full mb-8">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+            <TabsTrigger 
+              value="menu" 
+              onClick={() => navigate("/menu")}
+              className="gap-2"
+            >
+              <BookOpen className="h-4 w-4" />
+              Menu
+            </TabsTrigger>
+            <TabsTrigger 
+              value="agendamento"
+              onClick={() => navigate("/scheduling")}
+              className="gap-2"
+            >
+              <CalendarIcon className="h-4 w-4" />
+              Agendamento
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         <div className="flex items-center gap-3 mb-8">
           <CalendarDays className="h-8 w-8 text-primary" />

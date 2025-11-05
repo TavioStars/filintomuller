@@ -3,11 +3,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Settings as SettingsIcon, Moon, Sun } from "lucide-react";
+import { ArrowLeft, Settings as SettingsIcon, Moon, Sun, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -31,6 +33,11 @@ const Settings = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/auth");
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 pb-24 md:pb-8">
       <div className="max-w-4xl mx-auto">
@@ -48,30 +55,43 @@ const Settings = () => {
           <h1 className="text-3xl font-bold text-foreground">Configurações</h1>
         </div>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {isDark ? (
-                <Moon className="h-5 w-5 text-foreground" />
-              ) : (
-                <Sun className="h-5 w-5 text-foreground" />
-              )}
-              <div>
-                <Label htmlFor="theme-toggle" className="text-base font-medium cursor-pointer">
-                  Modo Escuro
-                </Label>
-                <p className="text-sm text-muted-foreground">
-                  Alternar entre modo claro e escuro
-                </p>
+        <div className="space-y-4">
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isDark ? (
+                  <Moon className="h-5 w-5 text-foreground" />
+                ) : (
+                  <Sun className="h-5 w-5 text-foreground" />
+                )}
+                <div>
+                  <Label htmlFor="theme-toggle" className="text-base font-medium cursor-pointer">
+                    Modo Escuro
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Alternar entre modo claro e escuro
+                  </p>
+                </div>
               </div>
+              <Switch
+                id="theme-toggle"
+                checked={isDark}
+                onCheckedChange={toggleTheme}
+              />
             </div>
-            <Switch
-              id="theme-toggle"
-              checked={isDark}
-              onCheckedChange={toggleTheme}
-            />
-          </div>
-        </Card>
+          </Card>
+
+          <Card className="p-6">
+            <Button
+              variant="destructive"
+              className="w-full gap-2"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-5 w-5" />
+              Sair da Conta
+            </Button>
+          </Card>
+        </div>
 
         <div className="mt-8 text-center">
           <p className="text-sm text-muted-foreground/60">

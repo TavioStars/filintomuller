@@ -75,7 +75,7 @@ const Settings = () => {
 
         <div className="mt-8 text-center">
           <p className="text-sm text-muted-foreground/60">
-            Feito por Otávio do 3 B 2025
+            Desenvolvido por Otávio Henrique 3º B 2025
           </p>
         </div>
       </div>

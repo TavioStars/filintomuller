@@ -40,7 +40,7 @@ const Index = () => {
         </Button>
 
         <p className="text-sm text-muted-foreground/60 pt-4">
-          Feito por Otávio do 3 B 2025
+          Desenvolvido por Otávio Henrique 3º B 2025
         </p>
       </div>
     </div>

@@ -23,6 +23,10 @@ interface Booking {
   user_id: string;
   period: Period;
   created_at: string;
+  profiles?: {
+    name: string;
+    role: string;
+  };
 }
 
 const CLASSES = [
@@ -83,7 +87,13 @@ const Scheduling = () => {
   const fetchBookings = async () => {
     const { data, error } = await supabase
       .from('bookings')
-      .select('*')
+      .select(`
+        *,
+        profiles (
+          name,
+          role
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -307,6 +317,11 @@ const Scheduling = () => {
                                   <p className="text-sm text-muted-foreground">
                                     {booking.class_name}
                                   </p>
+                                  {booking.profiles && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {booking.profiles.role} - {booking.profiles.name}
+                                    </p>
+                                  )}
                                 </div>
                                 <div className="text-right flex-1">
                                   <p className={`font-medium ${resourceData?.textColor || "text-primary"}`}>
@@ -384,20 +399,30 @@ const Scheduling = () => {
                         const resourceColor = RESOURCES.find(r => r.label === booking.resource)?.color || "bg-muted";
                         const isOwner = user?.id === booking.user_id;
                         return (
-                          <div key={booking.id} className={`p-3 rounded-lg border ${resourceColor} flex justify-between items-center gap-2`}>
-                            <p className="text-sm text-white font-medium">
-                              {booking.resource}
-                            </p>
-                            {isOwner && (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeleteBooking(booking.id)}
-                              >
-                                <Trash2 className="h-3 w-3 mr-1" />
-                                Remover
-                              </Button>
-                            )}
+                          <div key={booking.id} className={`p-3 rounded-lg border ${resourceColor}`}>
+                            <div className="flex justify-between items-center gap-2">
+                              <div className="flex-1">
+                                <p className="text-sm text-white font-medium">
+                                  {booking.resource}
+                                </p>
+                                {booking.profiles && (
+                                  <p className="text-xs text-white/80 mt-1">
+                                    {booking.profiles.role} - {booking.profiles.name}
+                                  </p>
+                                )}
+                              </div>
+                              {isOwner && (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDeleteBooking(booking.id)}
+                                  className="shrink-0"
+                                >
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  Remover
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         );
                       })

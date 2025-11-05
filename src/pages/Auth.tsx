@@ -7,14 +7,31 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const roleOptions = [
+    "Professor(a)",
+    "Coordenador(a)",
+    "Diretor(a)",
+    "Vice-diretor(a)",
+    "Supervisor(a)",
+    "Orientador(a)",
+    "Secretário(a)",
+    "Inspetor(a)",
+    "Bibliotecário(a)",
+    "Cozinheiro(a)",
+    "Técnico(a)",
+  ];
 
   useEffect(() => {
     if (user) {
@@ -47,9 +64,19 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!name.trim() || !role) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Por favor, preencha todos os campos.",
+      });
+      return;
+    }
+    
     setIsLoading(true);
 
-    const { error } = await signUp(email, password);
+    const { error } = await signUp(email, password, name, role);
 
     if (error) {
       toast({
@@ -113,6 +140,32 @@ const Auth = () => {
             
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="signup-name">Nome</Label>
+                  <Input
+                    id="signup-name"
+                    type="text"
+                    placeholder="Seu nome completo"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-role">Função na escola</Label>
+                  <Select value={role} onValueChange={setRole} required>
+                    <SelectTrigger id="signup-role">
+                      <SelectValue placeholder="Selecione sua função" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roleOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input

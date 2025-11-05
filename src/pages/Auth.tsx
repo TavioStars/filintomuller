@@ -20,6 +20,7 @@ const Auth = () => {
   const navigate = useNavigate();
 
   const roleOptions = [
+    "Aluno(a)",
     "Professor(a)",
     "Coordenador(a)",
     "Diretor(a)",

@@ -8,6 +8,33 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { z } from "zod";
+
+// Validation schemas
+const signInSchema = z.object({
+  email: z.string().trim()
+    .min(1, "Email é obrigatório")
+    .email("Email inválido")
+    .max(255, "Email muito longo"),
+  password: z.string()
+    .min(1, "Senha é obrigatória")
+});
+
+const signUpSchema = z.object({
+  name: z.string().trim()
+    .min(2, "Nome deve ter pelo menos 2 caracteres")
+    .max(100, "Nome muito longo"),
+  email: z.string().trim()
+    .min(1, "Email é obrigatório")
+    .email("Email inválido")
+    .max(255, "Email muito longo"),
+  password: z.string()
+    .min(8, "Senha deve ter pelo menos 8 caracteres")
+    .regex(/[A-Z]/, "Senha deve conter pelo menos uma letra maiúscula")
+    .regex(/[a-z]/, "Senha deve conter pelo menos uma letra minúscula")
+    .regex(/[0-9]/, "Senha deve conter pelo menos um número"),
+  role: z.string().min(1, "Função é obrigatória")
+});
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -42,9 +69,22 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate input
+    const result = signInSchema.safeParse({ email, password });
+    if (!result.success) {
+      const errors = result.error.errors.map(err => err.message).join(". ");
+      toast({
+        variant: "destructive",
+        title: "Erro de validação",
+        description: errors,
+      });
+      return;
+    }
+    
     setIsLoading(true);
 
-    const { error } = await signIn(email, password);
+    const { error } = await signIn(result.data.email, result.data.password);
 
     if (error) {
       toast({
@@ -66,18 +106,26 @@ const Auth = () => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name.trim() || !role) {
+    // Validate input
+    const result = signUpSchema.safeParse({ name, email, password, role });
+    if (!result.success) {
+      const errors = result.error.errors.map(err => err.message).join(". ");
       toast({
         variant: "destructive",
-        title: "Erro",
-        description: "Por favor, preencha todos os campos.",
+        title: "Erro de validação",
+        description: errors,
       });
       return;
     }
     
     setIsLoading(true);
 
-    const { error } = await signUp(email, password, name, role);
+    const { error } = await signUp(
+      result.data.email, 
+      result.data.password, 
+      result.data.name, 
+      result.data.role
+    );
 
     if (error) {
       toast({
@@ -183,12 +231,14 @@ const Auth = () => {
                   <Input
                     id="signup-password"
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="Mínimo 8 caracteres"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Deve conter: 8+ caracteres, maiúsculas, minúsculas e números
+                  </p>
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Cadastrando..." : "Cadastrar"}

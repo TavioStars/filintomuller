@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const Settings = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, isAnonymous } = useAuth();
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
@@ -88,8 +88,13 @@ const Settings = () => {
               onClick={handleSignOut}
             >
               <LogOut className="h-5 w-5" />
-              Sair da Conta
+              {isAnonymous ? "Sair do Modo Anônimo" : "Sair da Conta"}
             </Button>
+            {isAnonymous && (
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Você está navegando sem login
+              </p>
+            )}
           </Card>
         </div>
 

@@ -51,7 +51,7 @@ const RESOURCES = [
 const Scheduling = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isAnonymous } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const { toast } = useToast();
   const [currentPeriod, setCurrentPeriod] = useState<Period>("matutino");
@@ -115,7 +115,9 @@ const Scheduling = () => {
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
-      setSelectedDate(date);
+      // Use UTC to avoid timezone issues
+      const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      setSelectedDate(utcDate);
       setShowActionDialog(true);
     }
   };
@@ -126,6 +128,14 @@ const Scheduling = () => {
   };
 
   const handleScheduleNew = () => {
+    if (isAnonymous) {
+      toast({
+        variant: "destructive",
+        title: "Acesso negado",
+        description: "Você precisa fazer login para agendar recursos.",
+      });
+      return;
+    }
     setShowActionDialog(false);
     setShowClassDialog(true);
   };
@@ -205,17 +215,26 @@ const Scheduling = () => {
   };
 
   const getBookingsForDate = (date: Date, period: Period) => {
-    const dateStr = format(date, "yyyy-MM-dd");
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     return bookings.filter(b => b.date === dateStr && b.period === period);
   };
 
   const getBookingForClass = (className: string, date: Date, period: Period) => {
-    const dateStr = format(date, "yyyy-MM-dd");
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     return bookings.filter(b => b.date === dateStr && b.class_name === className && b.period === period);
   };
 
   const isResourceAvailable = (resourceId: string, classId: number, date: Date, period: Period) => {
-    const dateStr = format(date, "yyyy-MM-dd");
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     const resourceLabel = RESOURCES.find(r => r.id === resourceId)?.label || "";
     const className = `Aula ${classId}`;
     return !bookings.some(b => 
@@ -227,7 +246,10 @@ const Scheduling = () => {
   };
 
   const isClassAvailable = (classId: number, date: Date, period: Period) => {
-    const dateStr = format(date, "yyyy-MM-dd");
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     const className = `Aula ${classId}`;
     const classBookings = bookings.filter(b => b.date === dateStr && b.class_name === className && b.period === period);
     return classBookings.length < RESOURCES.length;

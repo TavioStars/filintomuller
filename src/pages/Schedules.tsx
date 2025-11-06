@@ -53,7 +53,7 @@ const Schedules = () => {
                 src={horarioEnsinoMedio} 
                 alt="Horários do Ensino Médio"
                 className="w-auto h-auto max-w-none rounded-lg cursor-zoom-in"
-                style={{ minWidth: '200%' }}
+                style={{ minWidth: '240%' }}
               />
             </DialogContent>
           </Dialog>

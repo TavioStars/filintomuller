@@ -115,9 +115,10 @@ const Scheduling = () => {
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
-      // Use UTC to avoid timezone issues
-      const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-      setSelectedDate(utcDate);
+      // Reset to start of day in local timezone to avoid visual offset
+      const localDate = new Date(date);
+      localDate.setHours(0, 0, 0, 0);
+      setSelectedDate(localDate);
       setShowActionDialog(true);
     }
   };
@@ -148,10 +149,10 @@ const Scheduling = () => {
 
   const handleResourceSelect = async (resourceId: string) => {
     if (selectedDate && selectedClass && user) {
-      // Format date in UTC to avoid timezone shifts
-      const year = selectedDate.getUTCFullYear();
-      const month = String(selectedDate.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(selectedDate.getUTCDate()).padStart(2, '0');
+      // Format date for storage
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
 
       const { error } = await supabase
@@ -215,25 +216,25 @@ const Scheduling = () => {
   };
 
   const getBookingsForDate = (date: Date, period: Period) => {
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     return bookings.filter(b => b.date === dateStr && b.period === period);
   };
 
   const getBookingForClass = (className: string, date: Date, period: Period) => {
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     return bookings.filter(b => b.date === dateStr && b.class_name === className && b.period === period);
   };
 
   const isResourceAvailable = (resourceId: string, classId: number, date: Date, period: Period) => {
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     const resourceLabel = RESOURCES.find(r => r.id === resourceId)?.label || "";
     const className = `Aula ${classId}`;
@@ -246,9 +247,9 @@ const Scheduling = () => {
   };
 
   const isClassAvailable = (classId: number, date: Date, period: Period) => {
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
     const className = `Aula ${classId}`;
     const classBookings = bookings.filter(b => b.date === dateStr && b.class_name === className && b.period === period);
@@ -451,7 +452,7 @@ const Scheduling = () => {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                Agendamentos - {selectedDate && `${String(selectedDate.getUTCDate()).padStart(2,'0')}/${String(selectedDate.getUTCMonth()+1).padStart(2,'0')}/${selectedDate.getUTCFullYear()}`}
+                Agendamentos - {selectedDate && `${String(selectedDate.getDate()).padStart(2,'0')}/${String(selectedDate.getMonth()+1).padStart(2,'0')}/${selectedDate.getFullYear()}`}
               </DialogTitle>
             </DialogHeader>
             <div className="grid gap-3 py-4 max-h-[400px] overflow-y-auto">

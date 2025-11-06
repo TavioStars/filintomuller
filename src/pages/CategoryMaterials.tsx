@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, ExternalLink, FileText, Image as ImageIcon, Video } from "lucide-react";
 import LoadingScreen from "@/components/LoadingScreen";
+import { AddMaterialDialog } from "@/components/AddMaterialDialog";
+import { useAdmin } from "@/hooks/useAdmin";
 
 interface Category {
   id: string;
@@ -38,30 +40,32 @@ const isImage = (path: string | null): boolean => !!path && /(\.png|\.jpe?g|\.gi
 const CategoryMaterials = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isAdmin } = useAdmin();
   const [category, setCategory] = useState<Category | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [{ data: catData, error: catErr }, { data: matsData, error: matsErr }] = await Promise.all([
+        supabase.from("material_categories").select("*").eq("id", id).single(),
+        supabase.from("materials").select("*").eq("category_id", id).order("display_order", { ascending: true }),
+      ]);
+      if (catErr) throw catErr;
+      if (matsErr) throw matsErr;
+      setCategory(catData as Category);
+      setMaterials((matsData || []) as Material[]);
+      // SEO basics
+      if (catData?.name) document.title = `${catData.name} • Materiais`;
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [{ data: catData, error: catErr }, { data: matsData, error: matsErr }] = await Promise.all([
-          supabase.from("material_categories").select("*").eq("id", id).single(),
-          supabase.from("materials").select("*").eq("category_id", id).order("display_order", { ascending: true }),
-        ]);
-        if (catErr) throw catErr;
-        if (matsErr) throw matsErr;
-        setCategory(catData as Category);
-        setMaterials((matsData || []) as Material[]);
-        // SEO basics
-        if (catData?.name) document.title = `${catData.name} • Materiais`;
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    };
     if (id) fetchData();
   }, [id]);
 
@@ -85,10 +89,17 @@ const CategoryMaterials = () => {
         </Button>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">{category.name}</h1>
-          {category.description && (
-            <p className="text-muted-foreground mt-2">{category.description}</p>
-          )}
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-foreground">{category.name}</h1>
+              {category.description && (
+                <p className="text-muted-foreground mt-2">{category.description}</p>
+              )}
+            </div>
+            {isAdmin && id && (
+              <AddMaterialDialog categoryId={id} onCreated={fetchData} />
+            )}
+          </div>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

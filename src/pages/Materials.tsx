@@ -3,12 +3,11 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, BookOpen, ExternalLink, FileText, Trash2, Video } from "lucide-react";
+import { ArrowLeft, BookOpen, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
 import { CreateCategoryDialog } from "@/components/CreateCategoryDialog";
-import { AddMaterialDialog } from "@/components/AddMaterialDialog";
 import LoadingScreen from "@/components/LoadingScreen";
 
 interface Material {
@@ -95,20 +94,6 @@ const Materials = () => {
     }
   };
 
-  const getMaterialIcon = (type: string) => {
-    switch (type) {
-      case 'video': return <Video className="h-4 w-4" />;
-      case 'file': return <FileText className="h-4 w-4" />;
-      default: return <ExternalLink className="h-4 w-4" />;
-    }
-  };
-
-  const openMaterial = (material: Material) => {
-    const targetUrl = material.file_path || material.url;
-    if (targetUrl) {
-      window.open(targetUrl, '_blank');
-    }
-  };
 
   if (loading || adminLoading) {
     return <LoadingScreen />;
@@ -132,65 +117,32 @@ const Materials = () => {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {categories.map((category) => (
-            <Card key={category.id} className="p-6">
-              <div className="flex items-start justify-between mb-4">
+            <Card 
+              key={category.id} 
+              className="p-6 hover:shadow-lg transition-all cursor-pointer hover:border-primary"
+              onClick={() => navigate(`/materials/category/${category.id}`)}
+            >
+              <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-1">
-                    <a href={`/materials/category/${category.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      {category.name}
-                    </a>
-                  </h3>
+                  <h3 className="text-lg font-semibold mb-1">{category.name}</h3>
                   <p className="text-sm text-muted-foreground">{category.description}</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {category.materials.length} {category.materials.length === 1 ? 'material' : 'materiais'}
+                  </p>
                 </div>
                 {isAdmin && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setDeleteDialog({ type: 'category', id: category.id })}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteDialog({ type: 'category', id: category.id });
+                    }}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 )}
               </div>
-
-              <div className="space-y-2">
-                {category.materials.map((material) => (
-                  <div
-                    key={material.id}
-                    className="flex items-center justify-between p-2 rounded-lg hover:bg-muted cursor-pointer group"
-                    onClick={() => openMaterial(material)}
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      {getMaterialIcon(material.type)}
-                      <span className="text-sm truncate" title={material.name}>{material.name}</span>
-                    </div>
-                    {isAdmin && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="opacity-0 group-hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteDialog({ type: 'material', id: material.id });
-                        }}
-                      >
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                {category.materials.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-2">
-                    Nenhum material ainda
-                  </p>
-                )}
-              </div>
-
-              {isAdmin && (
-                <div className="mt-4">
-                  <AddMaterialDialog categoryId={category.id} onCreated={fetchCategories} />
-                </div>
-              )}
             </Card>
           ))}
         </div>

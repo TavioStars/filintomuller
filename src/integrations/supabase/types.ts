@@ -52,6 +52,77 @@ export type Database = {
           },
         ]
       }
+      material_categories: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string
+          display_order: number
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description: string
+          display_order?: number
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string
+          display_order?: number
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      materials: {
+        Row: {
+          category_id: string
+          created_at: string
+          created_by: string
+          display_order: number
+          file_path: string | null
+          id: string
+          name: string
+          type: string
+          url: string | null
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          created_by: string
+          display_order?: number
+          file_path?: string | null
+          id?: string
+          name: string
+          type: string
+          url?: string | null
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          created_by?: string
+          display_order?: number
+          file_path?: string | null
+          id?: string
+          name?: string
+          type?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "materials_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "material_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           additional_images: string[] | null
@@ -59,9 +130,10 @@ export type Database = {
           content: string
           created_at: string | null
           created_by: string
-          date: string
+          event_date: string | null
           id: string
           links: string[] | null
+          published_at: string | null
           title: string
         }
         Insert: {
@@ -70,9 +142,10 @@ export type Database = {
           content: string
           created_at?: string | null
           created_by: string
-          date: string
+          event_date?: string | null
           id?: string
           links?: string[] | null
+          published_at?: string | null
           title: string
         }
         Update: {
@@ -81,9 +154,10 @@ export type Database = {
           content?: string
           created_at?: string | null
           created_by?: string
-          date?: string
+          event_date?: string | null
           id?: string
           links?: string[] | null
+          published_at?: string | null
           title?: string
         }
         Relationships: []

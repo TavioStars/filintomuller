@@ -17,7 +17,7 @@ const notificationSchema = z.object({
   content: z.string().trim()
     .min(1, "Conteúdo é obrigatório")
     .max(10000, "Conteúdo muito longo (máximo 10.000 caracteres)"),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+  eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida").optional().or(z.literal("")),
   links: z.array(
     z.string().url("URL inválida").or(z.literal(""))
   ).max(10, "Máximo de 10 links")
@@ -47,7 +47,7 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [date, setDate] = useState("");
+  const [eventDate, setEventDate] = useState("");
   const [bannerImage, setBannerImage] = useState<File | null>(null);
   const [additionalImages, setAdditionalImages] = useState<File[]>([]);
   const [links, setLinks] = useState<string[]>([""]);
@@ -61,7 +61,7 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
     const result = notificationSchema.safeParse({
       title,
       content,
-      date,
+      eventDate: eventDate || "",
       links: filteredLinks
     });
     
@@ -145,7 +145,7 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
         created_by: user.id,
         title: result.data.title,
         content: result.data.content,
-        date: result.data.date,
+        event_date: result.data.eventDate || null,
         banner_image: bannerUrl,
         additional_images: additionalUrls.length > 0 ? additionalUrls : null,
         links: result.data.links.filter(link => link.trim() !== "").length > 0 
@@ -176,10 +176,10 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
   };
 
   const resetForm = () => {
-    setTitle("");
-    setContent("");
-    setDate("");
-    setBannerImage(null);
+      setTitle("");
+      setContent("");
+      setEventDate("");
+      setBannerImage(null);
     setAdditionalImages([]);
     setLinks([""]);
   };
@@ -233,14 +233,16 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
           </div>
 
           <div>
-            <Label htmlFor="date">Data</Label>
+            <Label htmlFor="eventDate">Data do Evento (opcional)</Label>
             <Input
-              id="date"
+              id="eventDate"
               type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Deixe vazio se não houver data específica de evento
+            </p>
           </div>
 
           <div>

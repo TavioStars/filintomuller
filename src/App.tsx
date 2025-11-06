@@ -10,6 +10,7 @@ import Menu from "./pages/Menu";
 import Schedules from "./pages/Schedules";
 import Scheduling from "./pages/Scheduling";
 import Notifications from "./pages/Notifications";
+import NotificationDetail from "./pages/NotificationDetail";
 import Materials from "./pages/Materials";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
@@ -31,8 +32,9 @@ const App = () => {
               <Route path="/menu" element={<ProtectedRoute><Menu /></ProtectedRoute>} />
               <Route path="/schedules" element={<ProtectedRoute><Schedules /></ProtectedRoute>} />
               <Route path="/scheduling" element={<ProtectedRoute><Scheduling /></ProtectedRoute>} />
-              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-              <Route path="/materials" element={<ProtectedRoute><Materials /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute allowAnonymous><Notifications /></ProtectedRoute>} />
+              <Route path="/notifications/:id" element={<ProtectedRoute allowAnonymous><NotificationDetail /></ProtectedRoute>} />
+              <Route path="/materials" element={<ProtectedRoute allowAnonymous><Materials /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>

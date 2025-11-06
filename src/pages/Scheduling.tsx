@@ -138,10 +138,16 @@ const Scheduling = () => {
 
   const handleResourceSelect = async (resourceId: string) => {
     if (selectedDate && selectedClass && user) {
+      // Format date in UTC to avoid timezone shifts
+      const year = selectedDate.getUTCFullYear();
+      const month = String(selectedDate.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getUTCDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+
       const { error } = await supabase
         .from('bookings')
         .insert({
-          date: format(selectedDate, "yyyy-MM-dd"),
+          date: formattedDate,
           class_name: `Aula ${selectedClass}`,
           resource: RESOURCES.find(r => r.id === resourceId)?.label || "",
           user_id: user.id,

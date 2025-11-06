@@ -7,9 +7,11 @@ import LoadingScreen from "@/components/LoadingScreen";
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  isAnonymous: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, name: string, role: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  continueAsAnonymous: () => void;
   loading: boolean;
 }
 
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -64,11 +67,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    if (isAnonymous) {
+      setIsAnonymous(false);
+    } else {
+      await supabase.auth.signOut();
+    }
+  };
+
+  const continueAsAnonymous = () => {
+    setIsAnonymous(true);
+    setLoading(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, signIn, signUp, signOut, loading }}>
+    <AuthContext.Provider value={{ user, session, isAnonymous, signIn, signUp, signOut, continueAsAnonymous, loading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -82,21 +94,21 @@ export const useAuth = () => {
   return context;
 };
 
-export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
-  const { user, loading } = useAuth();
+export const ProtectedRoute = ({ children, allowAnonymous = false }: { children: ReactNode, allowAnonymous?: boolean }) => {
+  const { user, isAnonymous, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isAnonymous) {
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [user, isAnonymous, loading, navigate]);
 
   if (loading) {
     return <LoadingScreen />;
   }
 
-  if (!user) {
+  if (!user && !isAnonymous && !allowAnonymous) {
     return null;
   }
 

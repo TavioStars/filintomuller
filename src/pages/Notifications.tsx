@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Bell, ExternalLink } from "lucide-react";
+import { ArrowLeft, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdmin } from "@/hooks/useAdmin";
 import { CreateNotificationDialog } from "@/components/CreateNotificationDialog";
@@ -13,7 +13,8 @@ interface Notification {
   id: string;
   title: string;
   content: string;
-  date: string;
+  published_at: string;
+  event_date: string | null;
   banner_image: string | null;
   additional_images: string[] | null;
   links: string[] | null;
@@ -32,7 +33,7 @@ const Notifications = () => {
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
-        .order("date", { ascending: false });
+        .order("published_at", { ascending: false });
 
       if (error) throw error;
       setNotifications(data || []);
@@ -71,61 +72,47 @@ const Notifications = () => {
           {isAdmin && <CreateNotificationDialog onCreated={fetchNotifications} />}
         </div>
 
-        <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
           {notifications.map((notification) => (
-            <Card key={notification.id} className="p-6">
-              <div className="flex flex-col gap-4">
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">{notification.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {new Date(notification.date).toLocaleDateString('pt-BR', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
+            <Card 
+              key={notification.id} 
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => navigate(`/notifications/${notification.id}`)}
+            >
+              {notification.banner_image && (
+                <img 
+                  src={notification.banner_image}
+                  alt={notification.title}
+                  className="w-full h-48 object-cover rounded-t-lg"
+                />
+              )}
+              
+              <div className="p-4">
+                <h3 className="font-semibold text-lg mb-2">{notification.title}</h3>
+                
+                <div className="flex flex-col gap-1 mb-3 text-xs text-muted-foreground">
+                  <p>
+                    Publicado em: {new Date(notification.published_at).toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
                     })}
                   </p>
-                  <p className="text-foreground whitespace-pre-wrap">{notification.content}</p>
+                  {notification.event_date && (
+                    <p className="font-semibold text-primary">
+                      Evento: {new Date(notification.event_date).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })}
+                    </p>
+                  )}
                 </div>
                 
-                {notification.banner_image && (
-                  <img 
-                    src={notification.banner_image}
-                    alt={notification.title}
-                    className="w-full h-auto rounded-lg"
-                  />
-                )}
-
-                {notification.additional_images && notification.additional_images.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {notification.additional_images.map((img, idx) => (
-                      <img
-                        key={idx}
-                        src={img}
-                        alt={`Imagem ${idx + 1}`}
-                        className="w-full h-32 object-cover rounded-lg"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {notification.links && notification.links.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold">Links:</p>
-                    {notification.links.map((link, idx) => (
-                      <a
-                        key={idx}
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-sm text-primary hover:underline"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        {link}
-                      </a>
-                    ))}
-                  </div>
-                )}
+                <p className="text-sm text-foreground line-clamp-2">
+                  {notification.content.slice(0, 100)}
+                  {notification.content.length > 100 && "..."}
+                </p>
               </div>
             </Card>
           ))}

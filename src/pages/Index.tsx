@@ -1,25 +1,32 @@
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import LoadingScreen from "@/components/LoadingScreen";
 import logoImage from "@/assets/logo-filinto-muller.png";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAnonymous } = useAuth();
   const [profile, setProfile] = useState<{ name: string; role: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) {
+    if (!user && !isAnonymous) {
       navigate("/auth");
       return;
     }
 
+    if (isAnonymous) {
+      setLoading(false);
+      return;
+    }
+
     const fetchProfile = async () => {
+      if (!user) return;
+      
       const { data } = await supabase
         .from("profiles")
         .select("name, role")
@@ -33,9 +40,9 @@ const Index = () => {
     };
 
     fetchProfile();
-  }, [user, navigate]);
+  }, [user, isAnonymous, navigate]);
 
-  if (loading || !user || !profile) {
+  if (loading) {
     return <LoadingScreen />;
   }
 
@@ -52,22 +59,33 @@ const Index = () => {
           <h1 className="text-4xl font-bold text-foreground">
             Bem-vindo!
           </h1>
-          <p className="text-primary text-xl font-medium">
-            {profile.role} {profile.name}
-          </p>
-          <p className="text-muted-foreground text-lg">
-            Escola Estadual Senador Filinto Müller
-          </p>
+          {profile && (
+            <>
+              <p className="text-primary text-xl font-medium">
+                {profile.role} {profile.name}
+              </p>
+              <p className="text-muted-foreground text-lg">
+                Escola Estadual Senador Filinto Müller
+              </p>
+            </>
+          )}
+          {isAnonymous && (
+            <p className="text-muted-foreground text-lg">
+              Modo Anônimo
+            </p>
+          )}
         </div>
 
         <div className="space-y-3 pt-4">
-          <Button 
-            size="lg"
-            onClick={() => navigate("/scheduling")}
-            className="w-full text-lg px-8 py-6 hover:scale-105 transition-transform"
-          >
-            Acessar Agendamento
-          </Button>
+          {!isAnonymous && (
+            <Button 
+              size="lg"
+              onClick={() => navigate("/scheduling")}
+              className="w-full text-lg px-8 py-6 hover:scale-105 transition-transform"
+            >
+              Acessar Agendamento
+            </Button>
+          )}
 
           <Button 
             size="lg"

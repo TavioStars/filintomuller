@@ -37,14 +37,14 @@ const signUpSchema = z.object({
 });
 
 const Auth = () => {
+  const navigate = useNavigate();
+  const { signIn, signUp, user, continueAsAnonymous } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp, user } = useAuth();
-  const { toast } = useToast();
-  const navigate = useNavigate();
 
   const roleOptions = [
     "Aluno(a)",
@@ -147,6 +147,13 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <img
+              src={logoImage}
+              alt="Escola Estadual Senador Filinto Müller"
+              className="w-32 h-32 object-contain"
+            />
+          </div>
           <CardTitle className="text-2xl">Escola Filinto Müller</CardTitle>
           <CardDescription>Entre ou cadastre-se para continuar</CardDescription>
         </CardHeader>
@@ -185,6 +192,23 @@ const Auth = () => {
                   {isLoading ? "Entrando..." : "Entrar"}
                 </Button>
               </form>
+              
+              <div className="mt-6">
+                <Separator className="my-4" />
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    continueAsAnonymous();
+                    navigate("/menu");
+                  }}
+                >
+                  Continuar sem login
+                </Button>
+                <p className="text-xs text-center text-muted-foreground mt-2">
+                  Você poderá ver conteúdos mas não poderá fazer agendamentos
+                </p>
+              </div>
             </TabsContent>
             
             <TabsContent value="signup">

@@ -383,7 +383,7 @@ const Scheduling = () => {
                               <div className="flex justify-between items-start gap-2">
                                 <div className="flex-1">
                                   <p className="font-semibold text-foreground">
-                                    {format(new Date(booking.date), "dd/MM/yyyy", { locale: ptBR })}
+                                    {(() => { const [y, m, d] = booking.date.split('-'); return `${d}/${m}/${y}`; })()}
                                   </p>
                                   <p className="text-sm text-muted-foreground">
                                     {booking.class_name}
@@ -451,7 +451,7 @@ const Scheduling = () => {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                Agendamentos - {selectedDate && format(selectedDate, "dd/MM/yyyy", { locale: ptBR })}
+                Agendamentos - {selectedDate && `${String(selectedDate.getUTCDate()).padStart(2,'0')}/${String(selectedDate.getUTCMonth()+1).padStart(2,'0')}/${selectedDate.getUTCFullYear()}`}
               </DialogTitle>
             </DialogHeader>
             <div className="grid gap-3 py-4 max-h-[400px] overflow-y-auto">

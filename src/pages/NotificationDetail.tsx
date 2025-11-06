@@ -2,9 +2,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, Calendar } from "lucide-react";
+import { ArrowLeft, ExternalLink, Calendar, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import LoadingScreen from "@/components/LoadingScreen";
+import { useAdmin } from "@/hooks/useAdmin";
+import { useToast } from "@/hooks/use-toast";
 
 interface Notification {
   id: string;
@@ -20,6 +22,8 @@ interface Notification {
 const NotificationDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { isAdmin } = useAdmin();
+  const { toast } = useToast();
   const [notification, setNotification] = useState<Notification | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -66,7 +70,29 @@ const NotificationDetail = () => {
         </Button>
 
         <Card className="p-6">
-          <h1 className="text-3xl font-bold mb-4">{notification.title}</h1>
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <h1 className="text-3xl font-bold">{notification.title}</h1>
+            {isAdmin && (
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={async () => {
+                  if (!id) return;
+                  if (!confirm("Tem certeza que deseja excluir esta notificação?")) return;
+                  const { error } = await supabase.from("notifications").delete().eq("id", id);
+                  if (error) {
+                    toast({ variant: "destructive", description: error.message });
+                  } else {
+                    toast({ description: "Notificação excluída" });
+                    navigate("/notifications");
+                  }
+                }}
+                aria-label="Excluir notificação"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
 
           <div className="flex flex-wrap gap-4 mb-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">

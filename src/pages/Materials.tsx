@@ -135,7 +135,11 @@ const Materials = () => {
             <Card key={category.id} className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-1">{category.name}</h3>
+                  <h3 className="text-lg font-semibold mb-1">
+                    <a href={`/materials/category/${category.id}`} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                      {category.name}
+                    </a>
+                  </h3>
                   <p className="text-sm text-muted-foreground">{category.description}</p>
                 </div>
                 {isAdmin && (
@@ -158,7 +162,7 @@ const Materials = () => {
                   >
                     <div className="flex items-center gap-2 flex-1">
                       {getMaterialIcon(material.type)}
-                      <span className="text-sm truncate">{material.name}</span>
+                      <span className="text-sm truncate" title={material.name}>{material.name}</span>
                     </div>
                     {isAdmin && (
                       <Button

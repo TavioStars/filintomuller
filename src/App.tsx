@@ -12,6 +12,7 @@ import Scheduling from "./pages/Scheduling";
 import Notifications from "./pages/Notifications";
 import NotificationDetail from "./pages/NotificationDetail";
 import Materials from "./pages/Materials";
+import CategoryMaterials from "./pages/CategoryMaterials";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
@@ -35,6 +36,7 @@ const App = () => {
               <Route path="/notifications" element={<ProtectedRoute allowAnonymous><Notifications /></ProtectedRoute>} />
               <Route path="/notifications/:id" element={<ProtectedRoute allowAnonymous><NotificationDetail /></ProtectedRoute>} />
               <Route path="/materials" element={<ProtectedRoute allowAnonymous><Materials /></ProtectedRoute>} />
+              <Route path="/materials/category/:id" element={<ProtectedRoute allowAnonymous><CategoryMaterials /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>

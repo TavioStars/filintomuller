@@ -280,6 +280,14 @@ const UsersSheet = ({ open, onOpenChange }: UsersSheetProps) => {
                     <SelectItem value="Professor(a)">Professor(a)</SelectItem>
                     <SelectItem value="Coordenador(a)">Coordenador(a)</SelectItem>
                     <SelectItem value="Diretor(a)">Diretor(a)</SelectItem>
+                    <SelectItem value="Vice-diretor(a)">Vice-diretor(a)</SelectItem>
+                    <SelectItem value="Supervisor(a)">Supervisor(a)</SelectItem>
+                    <SelectItem value="Orientador(a)">Orientador(a)</SelectItem>
+                    <SelectItem value="Secretário(a)">Secretário(a)</SelectItem>
+                    <SelectItem value="Inspetor(a)">Inspetor(a)</SelectItem>
+                    <SelectItem value="Bibliotecário(a)">Bibliotecário(a)</SelectItem>
+                    <SelectItem value="Cozinheiro(a)">Cozinheiro(a)</SelectItem>
+                    <SelectItem value="Técnico(a)">Técnico(a)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -383,6 +391,14 @@ const UsersSheet = ({ open, onOpenChange }: UsersSheetProps) => {
                   <SelectItem value="Professor(a)">Professor(a)</SelectItem>
                   <SelectItem value="Coordenador(a)">Coordenador(a)</SelectItem>
                   <SelectItem value="Diretor(a)">Diretor(a)</SelectItem>
+                  <SelectItem value="Vice-diretor(a)">Vice-diretor(a)</SelectItem>
+                  <SelectItem value="Supervisor(a)">Supervisor(a)</SelectItem>
+                  <SelectItem value="Orientador(a)">Orientador(a)</SelectItem>
+                  <SelectItem value="Secretário(a)">Secretário(a)</SelectItem>
+                  <SelectItem value="Inspetor(a)">Inspetor(a)</SelectItem>
+                  <SelectItem value="Bibliotecário(a)">Bibliotecário(a)</SelectItem>
+                  <SelectItem value="Cozinheiro(a)">Cozinheiro(a)</SelectItem>
+                  <SelectItem value="Técnico(a)">Técnico(a)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

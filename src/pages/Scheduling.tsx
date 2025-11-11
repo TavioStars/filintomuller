@@ -63,6 +63,7 @@ const Scheduling = () => {
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isStudent, setIsStudent] = useState(false);
   const currentTab = location.pathname === "/scheduling" ? "agendamento" : "menu";
 
   // Fetch bookings
@@ -113,12 +114,26 @@ const Scheduling = () => {
     setLoading(false);
   };
 
-  const handleDateSelect = (date: Date | undefined) => {
+  const handleDateSelect = async (date: Date | undefined) => {
     if (date) {
       // Reset to start of day in local timezone to avoid visual offset
       const localDate = new Date(date);
       localDate.setHours(0, 0, 0, 0);
       setSelectedDate(localDate);
+
+      // Check if user is a student
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+        
+        setIsStudent(profile?.role === "Aluno(a)");
+      } else {
+        setIsStudent(false);
+      }
+
       setShowActionDialog(true);
     }
   };
@@ -128,7 +143,7 @@ const Scheduling = () => {
     setShowViewBookingsDialog(true);
   };
 
-  const handleScheduleNew = () => {
+  const handleScheduleNew = async () => {
     if (isAnonymous) {
       toast({
         variant: "destructive",
@@ -137,6 +152,16 @@ const Scheduling = () => {
       });
       return;
     }
+
+    if (isStudent) {
+      toast({
+        variant: "destructive",
+        title: "Acesso negado",
+        description: "Alunos não podem agendar recursos.",
+      });
+      return;
+    }
+
     setShowActionDialog(false);
     setShowClassDialog(true);
   };
@@ -356,7 +381,7 @@ const Scheduling = () => {
 
         <div className="flex items-center gap-3 mb-8">
           <CalendarDays className="h-8 w-8 text-gradient-end" />
-          <h1 className="text-3xl font-bold text-gradient">Agendamento</h1>
+          <h1 className="text-3xl font-bold text-foreground">Agendamento</h1>
         </div>
 
         <Tabs value={currentPeriod} onValueChange={(value) => setCurrentPeriod(value as Period)} className="w-full">
@@ -460,9 +485,10 @@ const Scheduling = () => {
               <Button
                 onClick={handleScheduleNew}
                 variant="outline"
-                className="h-16 text-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+                disabled={isStudent}
+                className="h-16 text-lg hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Agendar
+                {isStudent ? "Indisponível para alunos" : "Agendar"}
               </Button>
             </div>
           </DialogContent>

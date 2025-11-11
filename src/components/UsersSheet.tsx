@@ -358,19 +358,6 @@ const UsersSheet = ({ open, onOpenChange }: UsersSheetProps) => {
                                 {isUserAdmin && (
                                   <Badge variant="default">Admin</Badge>
                                 )}
-                                {!isUserAdmin && (
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleToggleAccess(profile);
-                                    }}
-                                    disabled={loading}
-                                  >
-                                    Negar Acesso
-                                  </Button>
-                                )}
                               </div>
                             </div>
                           </CardContent>
@@ -510,6 +497,42 @@ const UsersSheet = ({ open, onOpenChange }: UsersSheetProps) => {
               />
               <Label htmlFor="admin-toggle">Administrador</Label>
             </div>
+            {selectedUser?.status === "approved" && !userRoles[selectedUser?.id]?.some(r => r.role === "admin") && (
+              <div className="pt-4 border-t">
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (selectedUser) {
+                      handleToggleAccess(selectedUser);
+                      setEditDialogOpen(false);
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  Negar Acesso
+                </Button>
+              </div>
+            )}
+            {selectedUser?.status === "denied" && (
+              <div className="pt-4 border-t">
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (selectedUser) {
+                      handleToggleAccess(selectedUser);
+                      setEditDialogOpen(false);
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  Retomar Acesso
+                </Button>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>

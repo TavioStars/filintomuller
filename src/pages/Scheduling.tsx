@@ -114,14 +114,9 @@ const Scheduling = () => {
     setLoading(false);
   };
 
-  const handleDateSelect = async (date: Date | undefined) => {
-    if (date) {
-      // Reset to start of day in local timezone to avoid visual offset
-      const localDate = new Date(date);
-      localDate.setHours(0, 0, 0, 0);
-      setSelectedDate(localDate);
-
-      // Check if user is a student
+  // Check if user is a student on component mount
+  useEffect(() => {
+    const checkUserRole = async () => {
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -133,6 +128,27 @@ const Scheduling = () => {
       } else {
         setIsStudent(false);
       }
+    };
+
+    checkUserRole();
+  }, [user]);
+
+  const handleDateSelect = async (date: Date | undefined) => {
+    if (date) {
+      // Check if user is a student before allowing any interaction
+      if (isStudent && !isAdmin) {
+        toast({
+          variant: "destructive",
+          title: "Acesso restrito",
+          description: "Alunos não têm permissão para visualizar ou criar agendamentos.",
+        });
+        return;
+      }
+
+      // Reset to start of day in local timezone to avoid visual offset
+      const localDate = new Date(date);
+      localDate.setHours(0, 0, 0, 0);
+      setSelectedDate(localDate);
 
       setShowActionDialog(true);
     }

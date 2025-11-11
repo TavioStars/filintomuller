@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,10 +19,21 @@ import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import AdminPanel from "./pages/AdminPanel";
 import AccessPending from "./pages/AccessPending";
+import AccessDenied from "./pages/AccessDenied";
 
 const queryClient = new QueryClient();
 
 const App = () => {
+  // Apply theme from localStorage immediately on mount
+  useEffect(() => {
+    const theme = localStorage.getItem("theme") || "light";
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -32,6 +44,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/access-denied" element={<AccessDenied />} />
               <Route path="/menu" element={<ProtectedRoute><Menu /></ProtectedRoute>} />
               <Route path="/schedules" element={<ProtectedRoute><Schedules /></ProtectedRoute>} />
               <Route path="/scheduling" element={<ProtectedRoute><Scheduling /></ProtectedRoute>} />

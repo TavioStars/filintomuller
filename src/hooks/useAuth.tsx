@@ -3,6 +3,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import LoadingScreen from "@/components/LoadingScreen";
+import { useAccountStatus } from "./useAccountStatus";
 
 interface AuthContextType {
   user: User | null;
@@ -97,6 +98,9 @@ export const useAuth = () => {
 export const ProtectedRoute = ({ children, allowAnonymous = false }: { children: ReactNode, allowAnonymous?: boolean }) => {
   const { user, isAnonymous, loading } = useAuth();
   const navigate = useNavigate();
+  
+  // Monitor account status for real-time changes
+  useAccountStatus();
 
   useEffect(() => {
     if (!loading && !user && !isAnonymous) {

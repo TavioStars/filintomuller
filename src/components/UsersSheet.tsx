@@ -19,6 +19,7 @@ interface Profile {
   name: string;
   role: string;
   pending_approval: boolean;
+  status: string;
 }
 
 interface UserRole {
@@ -173,13 +174,13 @@ const UsersSheet = ({ open, onOpenChange }: UsersSheetProps) => {
 
       if (requestError) throw requestError;
 
-      // Update profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({ pending_approval: false })
-        .eq("id", request.user_id);
+      // Update profile status using the RPC function
+      const { error: statusError } = await supabase.rpc("update_account_status", {
+        target_user_id: request.user_id,
+        new_status: "approved",
+      });
 
-      if (profileError) throw profileError;
+      if (statusError) throw statusError;
 
       toast({
         title: "Acesso aprovado",
@@ -203,7 +204,8 @@ const UsersSheet = ({ open, onOpenChange }: UsersSheetProps) => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      // Update access request
+      const { error: requestError } = await supabase
         .from("access_requests")
         .update({
           status: "denied",
@@ -211,7 +213,15 @@ const UsersSheet = ({ open, onOpenChange }: UsersSheetProps) => {
         })
         .eq("id", request.id);
 
-      if (error) throw error;
+      if (requestError) throw requestError;
+
+      // Update profile status using the RPC function
+      const { error: statusError } = await supabase.rpc("update_account_status", {
+        target_user_id: request.user_id,
+        new_status: "denied",
+      });
+
+      if (statusError) throw statusError;
 
       toast({
         title: "Acesso negado",
@@ -219,10 +229,41 @@ const UsersSheet = ({ open, onOpenChange }: UsersSheetProps) => {
       });
 
       fetchAccessRequests();
+      fetchProfiles();
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Erro ao negar",
+        description: error.message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleAccess = async (profile: Profile) => {
+    setLoading(true);
+
+    try {
+      const newStatus = profile.status === "denied" ? "approved" : "denied";
+      
+      const { error } = await supabase.rpc("update_account_status", {
+        target_user_id: profile.id,
+        new_status: newStatus,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: newStatus === "approved" ? "Acesso retomado" : "Acesso negado",
+        description: `O acesso de ${profile.name} foi ${newStatus === "approved" ? "retomado" : "negado"}.`,
+      });
+
+      fetchProfiles();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao atualizar",
         description: error.message,
       });
     } finally {
@@ -236,6 +277,9 @@ const UsersSheet = ({ open, onOpenChange }: UsersSheetProps) => {
     const matchesRole = roleFilter === "all" || profile.role === roleFilter;
     return matchesSearch && matchesRole;
   });
+
+  const activeProfiles = filteredProfiles.filter(p => p.status === "approved");
+  const deniedProfiles = filteredProfiles.filter(p => p.status === "denied");
 
   return (
     <>
@@ -292,29 +336,85 @@ const UsersSheet = ({ open, onOpenChange }: UsersSheetProps) => {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                {filteredProfiles.map((profile) => {
-                  const isUserAdmin = userRoles[profile.id]?.some(r => r.role === "admin");
-                  return (
-                    <Card
-                      key={profile.id}
-                      className="cursor-pointer hover:bg-accent/50 transition-colors"
-                      onClick={() => handleUserClick(profile)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-semibold">{profile.name}</p>
-                            <p className="text-sm text-muted-foreground">{profile.role}</p>
-                          </div>
-                          {isUserAdmin && (
-                            <Badge variant="default">Admin</Badge>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">Usuários Ativos</h3>
+                  <div className="space-y-2">
+                    {activeProfiles.map((profile) => {
+                      const isUserAdmin = userRoles[profile.id]?.some(r => r.role === "admin");
+                      return (
+                        <Card
+                          key={profile.id}
+                          className="cursor-pointer hover:bg-accent/50 transition-colors"
+                          onClick={() => handleUserClick(profile)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-semibold">{profile.name}</p>
+                                <p className="text-sm text-muted-foreground">{profile.role}</p>
+                              </div>
+                              <div className="flex gap-2">
+                                {isUserAdmin && (
+                                  <Badge variant="default">Admin</Badge>
+                                )}
+                                {!isUserAdmin && (
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleAccess(profile);
+                                    }}
+                                    disabled={loading}
+                                  >
+                                    Negar Acesso
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {deniedProfiles.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Usuários Negados</h3>
+                    <div className="space-y-2">
+                      {deniedProfiles.map((profile) => (
+                        <Card
+                          key={profile.id}
+                          className="opacity-50 cursor-pointer hover:opacity-70 transition-opacity"
+                          onClick={() => handleUserClick(profile)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-semibold">{profile.name}</p>
+                                <p className="text-sm text-muted-foreground">{profile.role}</p>
+                                <Badge variant="destructive" className="mt-1">Acesso Negado</Badge>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleAccess(profile);
+                                }}
+                                disabled={loading}
+                              >
+                                Retomar Acesso
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </TabsContent>
 

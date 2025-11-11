@@ -32,7 +32,7 @@ const signUpSchema = z.object({
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { signIn, signUp, user, continueAsAnonymous } = useAuth();
+  const { signIn, signUp, signOut, user, continueAsAnonymous } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -66,17 +66,28 @@ const Auth = () => {
       return;
     }
 
-    // Check if user has pending approval
+    // Check account status
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("pending_approval")
+        .select("status")
         .eq("id", authUser.id)
         .single();
 
-      if (profile?.pending_approval) {
+      if (profile?.status === "pending") {
         navigate("/access-pending");
+        setIsLoading(false);
+        return;
+      }
+
+      if (profile?.status === "denied") {
+        await signOut();
+        toast({ 
+          variant: "destructive", 
+          title: "Acesso Negado", 
+          description: "Sua conta foi negada pelo administrador. Entre em contato com a escola para mais informações." 
+        });
         setIsLoading(false);
         return;
       }
@@ -106,15 +117,18 @@ const Auth = () => {
         return;
       }
 
-      // If role is not "Aluno(a)", create access request and set pending_approval
+      // If role is not "Aluno(a)", create access request and set status to pending
       if (result.data.role !== "Aluno(a)") {
         const { data: { user: newUser } } = await supabase.auth.getUser();
         
         if (newUser) {
-          // Update profile to pending approval
+          // Update profile to pending status
           await supabase
             .from("profiles")
-            .update({ pending_approval: true })
+            .update({ 
+              pending_approval: true,
+              status: "pending"
+            })
             .eq("id", newUser.id);
 
           // Create access request
@@ -222,17 +236,13 @@ const Auth = () => {
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm text-muted-foreground">
-              Você pode fazer login, mas terá acesso limitado até que um administrador aprove sua solicitação.
+              Você será redirecionado para a tela de aguardo. Seu acesso será liberado após a aprovação.
             </p>
           </div>
           <DialogFooter>
             <Button onClick={() => {
               setShowAccessRequestDialog(false);
-              // Clear form
-              setEmail("");
-              setPassword("");
-              setName("");
-              setRole("");
+              navigate("/access-pending");
             }}>
               Entendi
             </Button>

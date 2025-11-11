@@ -44,7 +44,7 @@ const AdminPanel = () => {
           </Button>
         </div>
 
-        <h1 className="text-3xl font-bold text-gradient mb-8">Painel de Administrador</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-8">Painel de Administrador</h1>
 
         <div className="grid gap-6">
           <Card>

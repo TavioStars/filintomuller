@@ -205,6 +205,7 @@ export type Database = {
           name: string
           pending_approval: boolean | null
           role: string
+          status: Database["public"]["Enums"]["access_status"]
         }
         Insert: {
           created_at?: string
@@ -212,6 +213,7 @@ export type Database = {
           name: string
           pending_approval?: boolean | null
           role: string
+          status?: Database["public"]["Enums"]["access_status"]
         }
         Update: {
           created_at?: string
@@ -219,6 +221,7 @@ export type Database = {
           name?: string
           pending_approval?: boolean | null
           role?: string
+          status?: Database["public"]["Enums"]["access_status"]
         }
         Relationships: []
       }
@@ -293,6 +296,13 @@ export type Database = {
       }
       remove_admin_role: {
         Args: { target_user_id: string }
+        Returns: undefined
+      }
+      update_account_status: {
+        Args: {
+          new_status: Database["public"]["Enums"]["access_status"]
+          target_user_id: string
+        }
         Returns: undefined
       }
     }

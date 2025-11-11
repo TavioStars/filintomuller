@@ -21,12 +21,18 @@ const AccessPending = () => {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("pending_approval")
+        .select("status")
         .eq("id", user.id)
         .single();
 
-      if (profile && !profile.pending_approval) {
+      if (profile?.status === "approved") {
         navigate("/menu");
+        return;
+      }
+
+      if (profile?.status === "denied") {
+        await signOut();
+        navigate("/auth");
         return;
       }
 
@@ -35,7 +41,7 @@ const AccessPending = () => {
 
     checkApproval();
 
-    // Set up realtime subscription to check for approval
+    // Set up realtime subscription to check for status changes
     const channel = supabase
       .channel('profile-changes')
       .on(
@@ -46,9 +52,14 @@ const AccessPending = () => {
           table: 'profiles',
           filter: `id=eq.${user?.id}`
         },
-        (payload) => {
-          if (payload.new && !payload.new.pending_approval) {
-            navigate("/menu");
+        async (payload) => {
+          if (payload.new) {
+            if (payload.new.status === "approved") {
+              navigate("/menu");
+            } else if (payload.new.status === "denied") {
+              await signOut();
+              navigate("/auth");
+            }
           }
         }
       )
@@ -57,7 +68,7 @@ const AccessPending = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, navigate]);
+  }, [user, navigate, signOut]);
 
   const handleSignOut = async () => {
     await signOut();

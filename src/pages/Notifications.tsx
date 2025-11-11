@@ -30,13 +30,24 @@ const Notifications = () => {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .order("published_at", { ascending: false });
+      // Use public view for non-admins to prevent admin ID exposure
+      if (isAdmin) {
+        const { data, error } = await supabase
+          .from("notifications")
+          .select("*")
+          .order("published_at", { ascending: false });
 
-      if (error) throw error;
-      setNotifications(data || []);
+        if (error) throw error;
+        setNotifications(data || []);
+      } else {
+        const { data, error } = await supabase
+          .from("notifications_public" as any)
+          .select("*")
+          .order("published_at", { ascending: false });
+
+        if (error) throw error;
+        setNotifications((data || []) as unknown as Notification[]);
+      }
     } catch (error) {
       console.error("Error fetching notifications:", error);
     } finally {
@@ -45,8 +56,10 @@ const Notifications = () => {
   };
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
+    if (!adminLoading) {
+      fetchNotifications();
+    }
+  }, [adminLoading, isAdmin]);
 
   if (loading || adminLoading) {
     return <LoadingScreen />;

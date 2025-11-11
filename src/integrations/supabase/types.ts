@@ -245,7 +245,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      notifications_public: {
+        Row: {
+          additional_images: string[] | null
+          banner_image: string | null
+          content: string | null
+          created_at: string | null
+          event_date: string | null
+          id: string | null
+          links: string[] | null
+          published_at: string | null
+          title: string | null
+        }
+        Insert: {
+          additional_images?: string[] | null
+          banner_image?: string | null
+          content?: string | null
+          created_at?: string | null
+          event_date?: string | null
+          id?: string | null
+          links?: string[] | null
+          published_at?: string | null
+          title?: string | null
+        }
+        Update: {
+          additional_images?: string[] | null
+          banner_image?: string | null
+          content?: string | null
+          created_at?: string | null
+          event_date?: string | null
+          id?: string | null
+          links?: string[] | null
+          published_at?: string | null
+          title?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       add_admin_role: { Args: { target_user_id: string }; Returns: undefined }

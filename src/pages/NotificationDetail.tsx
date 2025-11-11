@@ -31,14 +31,26 @@ const NotificationDetail = () => {
     const fetchNotification = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("notifications")
-          .select("*")
-          .eq("id", id)
-          .single();
+        // Use public view for non-admins to prevent admin ID exposure
+        if (isAdmin) {
+          const { data, error } = await supabase
+            .from("notifications")
+            .select("*")
+            .eq("id", id)
+            .single();
 
-        if (error) throw error;
-        setNotification(data);
+          if (error) throw error;
+          setNotification(data);
+        } else {
+          const { data, error } = await supabase
+            .from("notifications_public" as any)
+            .select("*")
+            .eq("id", id)
+            .single();
+
+          if (error) throw error;
+          setNotification(data as unknown as Notification);
+        }
       } catch (error) {
         console.error("Error fetching notification:", error);
       } finally {
@@ -47,7 +59,7 @@ const NotificationDetail = () => {
     };
 
     if (id) fetchNotification();
-  }, [id]);
+  }, [id, isAdmin]);
 
   if (loading) {
     return <LoadingScreen />;

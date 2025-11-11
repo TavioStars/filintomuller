@@ -62,6 +62,9 @@ export default {
         "datashow-2": "hsl(var(--datashow-2))",
         "computer-room": "hsl(var(--computer-room))",
         "laboratory": "hsl(var(--laboratory))",
+        "gradient-start": "hsl(var(--gradient-start))",
+        "gradient-middle": "hsl(var(--gradient-middle))",
+        "gradient-end": "hsl(var(--gradient-end))",
       },
       borderRadius: {
         lg: "var(--radius)",

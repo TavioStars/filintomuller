@@ -53,7 +53,7 @@ const Notifications = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 pb-24 md:pb-8">
+    <div className="min-h-screen bg-gradient-subtle p-4 md:p-8 pb-24 md:pb-8">
       <div className="max-w-4xl mx-auto">
         <Button
           onClick={() => navigate("/menu")}
@@ -66,8 +66,8 @@ const Notifications = () => {
 
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <Bell className="h-8 w-8 text-amber-500" />
-            <h1 className="text-3xl font-bold text-foreground">Notificações</h1>
+            <Bell className="h-8 w-8 text-gradient-end glow-gradient rounded-full p-1" />
+            <h1 className="text-3xl font-bold text-gradient">Notificações</h1>
           </div>
           {isAdmin && <CreateNotificationDialog onCreated={fetchNotifications} />}
         </div>
@@ -76,7 +76,8 @@ const Notifications = () => {
           {notifications.map((notification) => (
             <Card 
               key={notification.id} 
-              className="cursor-pointer hover:shadow-lg transition-shadow"
+              variant="gradient-subtle"
+              className="cursor-pointer hover:shadow-gradient hover:border-gradient-middle transition-all"
               onClick={() => navigate(`/notifications/${notification.id}`)}
             >
               {notification.banner_image && (
@@ -99,7 +100,7 @@ const Notifications = () => {
                     })}
                   </p>
                   {notification.event_date && (
-                    <p className="font-semibold text-primary">
+                    <p className="font-semibold text-gradient">
                       Evento: {new Date(notification.event_date).toLocaleDateString('pt-BR', {
                         day: '2-digit',
                         month: '2-digit',

@@ -22,10 +22,10 @@ const Navigation = () => {
               key={link.to}
               to={link.to}
               className={cn(
-                "flex flex-col md:flex-row items-center gap-1 md:gap-2 px-6 py-3 rounded-lg transition-colors",
+                "flex flex-col md:flex-row items-center gap-1 md:gap-2 px-6 py-3 rounded-lg transition-all",
                 isActive
-                  ? "text-primary bg-primary/10"
-                  : "text-muted-foreground hover:text-primary hover:bg-muted"
+                  ? "bg-gradient-primary text-white shadow-gradient"
+                  : "text-muted-foreground hover:text-primary hover:bg-gradient-start"
               )}
             >
               <Icon className="h-5 w-5" />

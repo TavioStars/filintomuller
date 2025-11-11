@@ -41,7 +41,7 @@ const Menu = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 pb-24 md:pb-8">
+    <div className="min-h-screen bg-gradient-subtle p-4 md:p-8 pb-24 md:pb-8">
       <div className="max-w-6xl mx-auto">
         <Button
           onClick={() => navigate("/")}
@@ -74,8 +74,8 @@ const Menu = () => {
         </Tabs>
 
         <div className="flex items-center gap-3 mb-8">
-          <BookOpen className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Menu</h1>
+          <BookOpen className="h-8 w-8 text-gradient-end" />
+          <h1 className="text-3xl font-bold text-gradient">Menu</h1>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -84,12 +84,13 @@ const Menu = () => {
             return (
               <Card
                 key={item.title}
-                className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                variant="gradient-subtle"
+                className="p-6 hover:shadow-gradient hover:border-gradient-middle transition-all cursor-pointer"
                 onClick={() => navigate(item.path)}
               >
                 <div className="flex items-start gap-4">
-                  <div className="p-3 bg-muted rounded-lg">
-                    <Icon className={`h-6 w-6 ${item.iconColor}`} />
+                  <div className="p-3 bg-gradient-primary rounded-lg shadow-gradient">
+                    <Icon className="h-6 w-6 text-white" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-xl font-semibold mb-2">{item.title}</h3>

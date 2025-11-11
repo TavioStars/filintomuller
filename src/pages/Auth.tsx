@@ -84,8 +84,8 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-subtle p-4">
+      <Card className="w-full max-w-md shadow-gradient">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <img src={logoImage} alt="Escola Estadual Senador Filinto Müller" className="w-32 h-32 object-contain" />
@@ -110,7 +110,7 @@ const Auth = () => {
                   <Label htmlFor="signin-password">Senha</Label>
                   <Input id="signin-password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? "Entrando..." : "Entrar"}</Button>
+                <Button type="submit" variant="gradient" className="w-full" disabled={isLoading}>{isLoading ? "Entrando..." : "Entrar"}</Button>
               </form>
               
               <div className="mt-6">
@@ -148,7 +148,7 @@ const Auth = () => {
                   <Input id="signup-password" type="password" placeholder="Mínimo 8 caracteres" value={password} onChange={(e) => setPassword(e.target.value)} required />
                   <p className="text-xs text-muted-foreground">Deve conter: 8+ caracteres, maiúsculas, minúsculas e números</p>
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? "Cadastrando..." : "Cadastrar"}</Button>
+                <Button type="submit" variant="gradient" className="w-full" disabled={isLoading}>{isLoading ? "Cadastrando..." : "Cadastrar"}</Button>
               </form>
             </TabsContent>
           </Tabs>

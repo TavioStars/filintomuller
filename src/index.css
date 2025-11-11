@@ -42,6 +42,10 @@ All colors MUST be HSL.
     --computer-room: 330 70% 60%;
     --laboratory: 45 85% 60%;
 
+    --gradient-start: 110 50% 95%;
+    --gradient-middle: 85 55% 70%;
+    --gradient-end: 82 55% 60%;
+
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
@@ -95,6 +99,11 @@ All colors MUST be HSL.
     --datashow-2: 30 85% 55%;
     --computer-room: 330 70% 60%;
     --laboratory: 45 85% 60%;
+
+    --gradient-start: 110 40% 20%;
+    --gradient-middle: 85 55% 50%;
+    --gradient-end: 82 55% 60%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -113,5 +122,38 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--gradient-middle)), hsl(var(--gradient-end)));
+  }
+  
+  .bg-gradient-subtle {
+    background: linear-gradient(180deg, hsl(var(--gradient-start)) 0%, hsl(var(--background)) 50%);
+  }
+  
+  .bg-gradient-card {
+    background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--gradient-start)) 100%);
+  }
+  
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--gradient-middle)), hsl(var(--gradient-end)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .border-gradient {
+    border-image: linear-gradient(135deg, hsl(var(--gradient-middle)), hsl(var(--gradient-end))) 1;
+  }
+  
+  .shadow-gradient {
+    box-shadow: 0 10px 30px -10px hsl(var(--primary) / 0.3);
+  }
+  
+  .glow-gradient {
+    box-shadow: 0 0 40px hsl(var(--primary) / 0.4);
   }
 }

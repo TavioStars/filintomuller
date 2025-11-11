@@ -47,8 +47,8 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="text-center space-y-6 max-w-md p-8">
+    <div className="min-h-screen bg-gradient-subtle flex items-center justify-center p-4">
+      <Card className="text-center space-y-6 max-w-md p-8 shadow-gradient">
         <img
           src={logoImage}
           alt="Escola Estadual Senador Filinto Müller"
@@ -61,7 +61,7 @@ const Index = () => {
           </h1>
           {profile && (
             <>
-              <p className="text-primary text-xl font-medium">
+              <p className="text-gradient text-xl font-medium">
                 {profile.role} {profile.name}
               </p>
               <p className="text-muted-foreground text-lg">
@@ -80,6 +80,7 @@ const Index = () => {
           {!isAnonymous && (
             <Button 
               size="lg"
+              variant="gradient"
               onClick={() => navigate("/scheduling")}
               className="w-full text-lg px-8 py-6 hover:scale-105 transition-transform"
             >

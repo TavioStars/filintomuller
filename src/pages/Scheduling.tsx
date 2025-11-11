@@ -301,7 +301,7 @@ const Scheduling = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 pb-24 md:pb-8">
+    <div className="min-h-screen bg-gradient-subtle p-4 md:p-8 pb-24 md:pb-8">
       <div className="max-w-6xl mx-auto">
         <Button
           onClick={() => navigate("/")}
@@ -334,8 +334,8 @@ const Scheduling = () => {
         </Tabs>
 
         <div className="flex items-center gap-3 mb-8">
-          <CalendarDays className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Agendamento</h1>
+          <CalendarDays className="h-8 w-8 text-gradient-end" />
+          <h1 className="text-3xl font-bold text-gradient">Agendamento</h1>
         </div>
 
         <Tabs value={currentPeriod} onValueChange={(value) => setCurrentPeriod(value as Period)} className="w-full">

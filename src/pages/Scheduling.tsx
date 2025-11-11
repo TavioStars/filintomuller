@@ -154,13 +154,34 @@ const Scheduling = () => {
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
+      const className = `Aula ${selectedClass}`;
+      const resourceLabel = RESOURCES.find(r => r.id === resourceId)?.label || "";
+
+      // Check if booking already exists
+      const { data: existingBooking } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('date', formattedDate)
+        .eq('class_name', className)
+        .eq('resource', resourceLabel)
+        .eq('period', currentPeriod)
+        .maybeSingle();
+
+      if (existingBooking) {
+        toast({
+          variant: "destructive",
+          title: "Recurso já agendado",
+          description: "Este recurso já está agendado para esta aula.",
+        });
+        return;
+      }
 
       const { error } = await supabase
         .from('bookings')
         .insert({
           date: formattedDate,
-          class_name: `Aula ${selectedClass}`,
-          resource: RESOURCES.find(r => r.id === resourceId)?.label || "",
+          class_name: className,
+          resource: resourceLabel,
           user_id: user.id,
           period: currentPeriod,
         });

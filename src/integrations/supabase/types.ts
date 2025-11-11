@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          requested_role: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["access_status"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          requested_role: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["access_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          requested_role?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["access_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           class_name: string
@@ -167,18 +203,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          pending_approval: boolean | null
           role: string
         }
         Insert: {
           created_at?: string
           id: string
           name: string
+          pending_approval?: boolean | null
           role: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
+          pending_approval?: boolean | null
           role?: string
         }
         Relationships: []
@@ -209,6 +248,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_admin_role: { Args: { target_user_id: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -216,8 +256,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      remove_admin_role: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
+      access_status: "pending" | "approved" | "denied"
       app_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -346,6 +391,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      access_status: ["pending", "approved", "denied"],
       app_role: ["admin", "user"],
     },
   },

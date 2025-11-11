@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import logoImage from "@/assets/logo-filinto-muller.png";
 
@@ -37,6 +39,7 @@ const Auth = () => {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showAccessRequestDialog, setShowAccessRequestDialog] = useState(false);
 
   const roleOptions = [
     "Aluno(a)", "Professor(a)", "Coordenador(a)", "Diretor(a)", "Vice-diretor(a)",
@@ -59,10 +62,28 @@ const Auth = () => {
     const { error } = await signIn(result.data.email, result.data.password);
     if (error) {
       toast({ variant: "destructive", title: "Erro ao entrar", description: error.message });
-    } else {
-      toast({ title: "Bem-vindo!", description: "Login realizado com sucesso." });
-      navigate("/menu");
+      setIsLoading(false);
+      return;
     }
+
+    // Check if user has pending approval
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("pending_approval")
+        .eq("id", authUser.id)
+        .single();
+
+      if (profile?.pending_approval) {
+        navigate("/access-pending");
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    toast({ title: "Bem-vindo!", description: "Login realizado com sucesso." });
+    navigate("/menu");
     setIsLoading(false);
   };
 
@@ -74,13 +95,49 @@ const Auth = () => {
       return;
     }
     setIsLoading(true);
-    const { error } = await signUp(result.data.email, result.data.password, result.data.name, result.data.role);
-    if (error) {
+
+    try {
+      // Create account
+      const { error: signUpError } = await signUp(result.data.email, result.data.password, result.data.name, result.data.role);
+      
+      if (signUpError) {
+        toast({ variant: "destructive", title: "Erro ao cadastrar", description: signUpError.message });
+        setIsLoading(false);
+        return;
+      }
+
+      // If role is not "Aluno(a)", create access request and set pending_approval
+      if (result.data.role !== "Aluno(a)") {
+        const { data: { user: newUser } } = await supabase.auth.getUser();
+        
+        if (newUser) {
+          // Update profile to pending approval
+          await supabase
+            .from("profiles")
+            .update({ pending_approval: true })
+            .eq("id", newUser.id);
+
+          // Create access request
+          await supabase
+            .from("access_requests")
+            .insert({
+              user_id: newUser.id,
+              email: result.data.email,
+              name: result.data.name,
+              requested_role: result.data.role,
+              status: "pending",
+            });
+
+          setShowAccessRequestDialog(true);
+        }
+      } else {
+        toast({ title: "Conta criada!", description: "Você pode fazer login agora." });
+      }
+    } catch (error: any) {
       toast({ variant: "destructive", title: "Erro ao cadastrar", description: error.message });
-    } else {
-      toast({ title: "Conta criada!", description: "Você pode fazer login agora." });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
@@ -154,6 +211,34 @@ const Auth = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      <Dialog open={showAccessRequestDialog} onOpenChange={setShowAccessRequestDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pedido de Acesso Enviado</DialogTitle>
+            <DialogDescription>
+              Seu pedido de acesso foi enviado e está aguardando aprovação de um administrador.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Você pode fazer login, mas terá acesso limitado até que um administrador aprove sua solicitação.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => {
+              setShowAccessRequestDialog(false);
+              // Clear form
+              setEmail("");
+              setPassword("");
+              setName("");
+              setRole("");
+            }}>
+              Entendi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

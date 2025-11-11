@@ -6,7 +6,7 @@ const LoadingScreen = () => {
       <img 
         src={loadingLogo} 
         alt="Carregando..." 
-        className="w-32 h-32 animate-pulse glow-gradient rounded-full"
+        className="w-32 h-32 animate-pulse"
       />
     </div>
   );

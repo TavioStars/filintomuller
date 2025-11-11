@@ -16,6 +16,8 @@ import CategoryMaterials from "./pages/CategoryMaterials";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
+import AdminPanel from "./pages/AdminPanel";
+import AccessPending from "./pages/AccessPending";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +40,8 @@ const App = () => {
               <Route path="/materials" element={<ProtectedRoute allowAnonymous><Materials /></ProtectedRoute>} />
               <Route path="/materials/category/:id" element={<ProtectedRoute allowAnonymous><CategoryMaterials /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute><AdminPanel /></ProtectedRoute>} />
+              <Route path="/access-pending" element={<ProtectedRoute><AccessPending /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

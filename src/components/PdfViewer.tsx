@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs`;
 
 interface PdfViewerProps {
   url: string;
@@ -22,7 +22,7 @@ const PdfViewer = ({ url }: PdfViewerProps) => {
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
 
-    wrapper.innerHTML = "";
+    wrapper.replaceChildren();
     const dpr = window.devicePixelRatio || 1;
 
     for (let i = 1; i <= pdf.numPages; i++) {

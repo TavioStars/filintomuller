@@ -118,21 +118,12 @@ const Auth = () => {
         return;
       }
 
-      // If role is not "Aluno(a)", create access request and set status to pending
+      // If role is not "Aluno(a)", create access request (status is set by the database trigger)
       if (result.data.role !== "Aluno(a)") {
         const { data: { user: newUser } } = await supabase.auth.getUser();
         
         if (newUser) {
-          // Update profile to pending status
-          await supabase
-            .from("profiles")
-            .update({ 
-              pending_approval: true,
-              status: "pending"
-            })
-            .eq("id", newUser.id);
-
-          // Create access request
+          // Create access request - profile status is already set by handle_new_user trigger
           await supabase
             .from("access_requests")
             .insert({

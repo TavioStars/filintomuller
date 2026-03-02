@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, BookOpen, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, Trash2, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
@@ -139,6 +139,7 @@ const Materials = () => {
                       setDeleteDialog({ type: 'category', id: category.id });
                     }}
                   >
+                    <Shield className="h-3 w-3 text-destructive" />
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 )}

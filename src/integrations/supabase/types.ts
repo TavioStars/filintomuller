@@ -225,6 +225,36 @@ export type Database = {
         }
         Relationships: []
       }
+      schedules: {
+        Row: {
+          created_at: string
+          file_path: string
+          file_url: string
+          id: string
+          level: string
+          period: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          file_url: string
+          id?: string
+          level: string
+          period: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          file_url?: string
+          id?: string
+          level?: string
+          period?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null

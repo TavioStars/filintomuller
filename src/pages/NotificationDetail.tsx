@@ -2,7 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, Calendar, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Calendar, Trash2, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -101,6 +101,7 @@ const NotificationDetail = () => {
                 }}
                 aria-label="Excluir notificação"
               >
+                <Shield className="h-3 w-3" />
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}

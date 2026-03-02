@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Plus, Upload, X } from "lucide-react";
+import { Plus, Upload, X, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -202,6 +202,7 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="gap-2">
+          <Shield className="h-3 w-3" />
           <Plus className="h-4 w-4" />
           Nova Notificação
         </Button>

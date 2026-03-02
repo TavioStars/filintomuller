@@ -51,7 +51,7 @@ const Schedules = () => {
   const { toast } = useToast();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
   const [viewingPdf, setViewingPdf] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [currentPeriod, setCurrentPeriod] = useState<Period>("matutino");
@@ -114,7 +114,8 @@ const Schedules = () => {
       return;
     }
 
-    setUploading(true);
+    const uploadKey = `${period}-${level}`;
+    setUploading(uploadKey);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
@@ -154,7 +155,7 @@ const Schedules = () => {
     } catch (error: any) {
       toast({ variant: "destructive", description: error.message || "Erro ao fazer upload." });
     } finally {
-      setUploading(false);
+      setUploading(null);
     }
   };
 
@@ -176,6 +177,8 @@ const Schedules = () => {
 
   const renderLevelCard = (period: Period, level: Level) => {
     const schedule = getSchedule(period, level);
+    const uploadKey = `${period}-${level}`;
+    const isUploading = uploading === uploadKey;
 
     return (
       <Card key={level} className="p-6">
@@ -214,13 +217,13 @@ const Schedules = () => {
                     <Button
                       variant="outline"
                       className="gap-2 cursor-pointer"
-                      disabled={uploading}
+                      disabled={isUploading}
                       asChild
                     >
                       <span>
                         <Shield className="h-3 w-3" />
                         <Upload className="h-4 w-4" />
-                        {uploading ? "Enviando..." : "Substituir"}
+                        {isUploading ? "Enviando..." : "Substituir"}
                       </span>
                     </Button>
                     <input
@@ -269,13 +272,13 @@ const Schedules = () => {
                 <Button
                   variant="default"
                   className="gap-2 cursor-pointer"
-                  disabled={uploading}
+                  disabled={isUploading}
                   asChild
                 >
                   <span>
                     <Shield className="h-3 w-3" />
                     <Upload className="h-4 w-4" />
-                    {uploading ? "Enviando..." : "Enviar horário (PDF)"}
+                    {isUploading ? "Enviando..." : "Enviar horário (PDF)"}
                   </span>
                 </Button>
                 <input

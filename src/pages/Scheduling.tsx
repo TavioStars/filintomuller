@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CalendarDays, ArrowLeft, Trash2, BookOpen, Calendar as CalendarIcon } from "lucide-react";
+import { CalendarDays, ArrowLeft, Trash2, BookOpen, Calendar as CalendarIcon, Shield } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { DayModifiers } from "react-day-picker";
@@ -469,6 +469,7 @@ const Scheduling = () => {
                                     onClick={() => handleDeleteBooking(booking.id, booking.user_id)}
                                     className="shrink-0"
                                   >
+                                    {isAdmin && user?.id !== booking.user_id && <Shield className="h-3 w-3" />}
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 )}
@@ -553,6 +554,7 @@ const Scheduling = () => {
                                   onClick={() => handleDeleteBooking(booking.id, booking.user_id)}
                                   className="shrink-0"
                                 >
+                                  {isAdmin && user?.id !== booking.user_id && <Shield className="h-3 w-3 mr-1" />}
                                   <Trash2 className="h-3 w-3 mr-1" />
                                   Remover
                                 </Button>

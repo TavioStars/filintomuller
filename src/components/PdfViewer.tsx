@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface PdfViewerProps {
   url: string;
@@ -60,7 +60,7 @@ const PdfViewer = ({ url }: PdfViewerProps) => {
         if (!response.ok) throw new Error("Erro ao baixar o PDF");
         const arrayBuffer = await response.arrayBuffer();
 
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, isEvalSupported: false }).promise;
         if (cancelled) return;
 
         pdfDocRef.current = pdf;

@@ -36,6 +36,15 @@ const LEVEL_LABELS: Record<Level, string> = {
   fundamental: "Ensino Fundamental",
 };
 
+const sanitizeFileName = (name: string): string => {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/_+/g, "_")
+    .toLowerCase();
+};
+
 const Schedules = () => {
   const navigate = useNavigate();
   const { isAdmin, loading: adminLoading } = useAdmin();
@@ -117,7 +126,7 @@ const Schedules = () => {
         await supabase.from("schedules").delete().eq("id", existing.id);
       }
 
-      const filePath = `${period}/${level}/${Date.now()}_${file.name}`;
+      const filePath = `${period}/${level}/${Date.now()}_${sanitizeFileName(file.name)}`;
       const { error: uploadError } = await supabase.storage
         .from("schedule-files")
         .upload(filePath, file);

@@ -43,6 +43,7 @@ const Schedules = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [viewingPdf, setViewingPdf] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [currentPeriod, setCurrentPeriod] = useState<Period>("matutino");
 
   useEffect(() => {
@@ -60,6 +61,44 @@ const Schedules = () => {
       setSchedules((data || []) as Schedule[]);
     }
     setLoading(false);
+  };
+
+  const fetchPdfAsBlob = async (url: string): Promise<string> => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Erro ao baixar o PDF");
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  };
+
+  const handleViewPdf = async (fileUrl: string) => {
+    setPdfLoading(true);
+    try {
+      const blobUrl = await fetchPdfAsBlob(fileUrl);
+      setViewingPdf(blobUrl);
+    } catch (error: any) {
+      toast({ variant: "destructive", description: "Erro ao carregar o PDF para visualização." });
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handleOpenInNewTab = async (fileUrl: string) => {
+    setPdfLoading(true);
+    try {
+      const blobUrl = await fetchPdfAsBlob(fileUrl);
+      window.open(blobUrl, "_blank");
+    } catch (error: any) {
+      toast({ variant: "destructive", description: "Erro ao abrir o PDF." });
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handleClosePdfViewer = () => {
+    if (viewingPdf) {
+      URL.revokeObjectURL(viewingPdf);
+    }
+    setViewingPdf(null);
   };
 
   const getSchedule = (period: Period, level: Level) => {
@@ -155,20 +194,20 @@ const Schedules = () => {
               <Button
                 variant="outline"
                 className="gap-2"
-                onClick={() => setViewingPdf(schedule.file_url)}
+                disabled={pdfLoading}
+                onClick={() => handleViewPdf(schedule.file_url)}
               >
                 <Eye className="h-4 w-4" />
-                Visualizar
+                {pdfLoading ? "Carregando..." : "Visualizar"}
               </Button>
               <Button
                 variant="outline"
                 className="gap-2"
-                asChild
+                disabled={pdfLoading}
+                onClick={() => handleOpenInNewTab(schedule.file_url)}
               >
-                <a href={schedule.file_url} target="_blank" rel="noopener noreferrer">
-                  <FileText className="h-4 w-4" />
-                  Abrir em nova aba
-                </a>
+                <FileText className="h-4 w-4" />
+                {pdfLoading ? "Carregando..." : "Abrir em nova aba"}
               </Button>
               {isAdmin && (
                 <>
@@ -294,7 +333,7 @@ const Schedules = () => {
         </Tabs>
 
         {/* PDF Viewer Dialog */}
-        <Dialog open={!!viewingPdf} onOpenChange={() => setViewingPdf(null)}>
+        <Dialog open={!!viewingPdf} onOpenChange={handleClosePdfViewer}>
           <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-[90vh] p-4">
             <DialogHeader>
               <DialogTitle>Visualizar Horário</DialogTitle>

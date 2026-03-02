@@ -1,42 +1,19 @@
 
 
-## Problema
+## Correções
 
-O erro `ERR_BLOCKED_BY_CLIENT` no Microsoft Edge persiste mesmo com blob URLs porque o Edge bloqueia a renderização de PDFs dentro de `<iframe>` independentemente da origem. A solução é eliminar completamente o `<iframe>` e renderizar o PDF diretamente em elementos `<canvas>` usando a biblioteca `pdfjs-dist`.
+### 1. Upload — Erro "Invalid key" (`src/pages/Schedules.tsx`)
+Adicionar função `sanitizeFileName` que remove acentos, espaços e caracteres especiais do nome do arquivo antes do upload.
 
-## Solução
+### 2. PdfViewer — Zoom e scroll (`src/components/PdfViewer.tsx`)
+- Remover `canvas.style.maxWidth = "100%"` e `canvas.style.height = "auto"` — são eles que anulam o zoom
+- Envolver os canvas num wrapper com `min-width: fit-content` para permitir scroll horizontal quando zoom > 100%
+- Adicionar botão de reset zoom (100%)
+- Scale inicial = 1.0 para caber melhor no celular
+- Container com `touch-action: pan-x pan-y` para navegação por toque
 
-Usar `pdfjs-dist` para renderizar as páginas do PDF diretamente em canvas, com navegação entre páginas, zoom, e scroll — tudo dentro do Dialog existente.
-
-### Mudanças
-
-**1. Instalar `pdfjs-dist` (v3.11.174 para compatibilidade simples)**
-
-**2. Criar `src/components/PdfViewer.tsx`**
-- Componente que recebe uma URL, faz fetch como ArrayBuffer, e usa `pdfjs-dist` para renderizar cada página em `<canvas>`
-- Renderiza todas as páginas em sequência (scroll vertical) para uma pré-visualização completa
-- Inclui controle de zoom (+ / -)
-- Loading spinner enquanto renderiza
-
-**3. Atualizar `src/pages/Schedules.tsx`**
-- Substituir o `<iframe>` pelo componente `PdfViewer`
-- O estado `viewingPdf` passa a armazenar a URL original (não mais blob)
-- O `PdfViewer` faz o fetch internamente
-- Manter o botão "Abrir em nova aba" com abordagem blob para download
-
-### Detalhes Técnicos
-
-- `pdfjs-dist` v3.x usa worker via `pdfjs-dist/build/pdf.worker.entry`
-- Cada página é renderizada em um `<canvas>` separado dentro de um container com scroll
-- Scale padrão de 1.5 para boa legibilidade
-- Fetch como `ArrayBuffer` → `pdfjsLib.getDocument({ data })` → renderiza em canvas
-- Zero dependência do viewer nativo do navegador = funciona em qualquer browser
-
-### Arquivos
-
-| Arquivo | Ação |
+| Arquivo | Mudança |
 |---|---|
-| `package.json` | Adicionar `pdfjs-dist@3.11.174` |
-| `src/components/PdfViewer.tsx` | Novo componente de renderização de PDF |
-| `src/pages/Schedules.tsx` | Substituir iframe pelo PdfViewer |
+| `src/pages/Schedules.tsx` | Sanitizar nome do arquivo no upload |
+| `src/components/PdfViewer.tsx` | Corrigir zoom real + scroll horizontal + reset + mobile touch |
 

@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
 import LoadingScreen from "@/components/LoadingScreen";
+import PdfViewer from "@/components/PdfViewer";
 
 type Period = "matutino" | "vespertino" | "noturno";
 type Level = "medio" | "fundamental";
@@ -70,16 +71,8 @@ const Schedules = () => {
     return URL.createObjectURL(blob);
   };
 
-  const handleViewPdf = async (fileUrl: string) => {
-    setPdfLoading(true);
-    try {
-      const blobUrl = await fetchPdfAsBlob(fileUrl);
-      setViewingPdf(blobUrl);
-    } catch (error: any) {
-      toast({ variant: "destructive", description: "Erro ao carregar o PDF para visualização." });
-    } finally {
-      setPdfLoading(false);
-    }
+  const handleViewPdf = (fileUrl: string) => {
+    setViewingPdf(fileUrl);
   };
 
   const handleOpenInNewTab = async (fileUrl: string) => {
@@ -95,9 +88,6 @@ const Schedules = () => {
   };
 
   const handleClosePdfViewer = () => {
-    if (viewingPdf) {
-      URL.revokeObjectURL(viewingPdf);
-    }
     setViewingPdf(null);
   };
 
@@ -339,12 +329,7 @@ const Schedules = () => {
               <DialogTitle>Visualizar Horário</DialogTitle>
             </DialogHeader>
             {viewingPdf && (
-              <iframe
-                src={viewingPdf}
-                className="w-full flex-1 rounded-lg border"
-                style={{ minHeight: "70vh" }}
-                title="Visualização do horário"
-              />
+              <PdfViewer url={viewingPdf} />
             )}
           </DialogContent>
         </Dialog>

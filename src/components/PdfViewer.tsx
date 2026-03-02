@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
@@ -23,6 +23,7 @@ const PdfViewer = ({ url }: PdfViewerProps) => {
     if (!wrapper) return;
 
     wrapper.innerHTML = "";
+    const dpr = window.devicePixelRatio || 1;
 
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
@@ -30,15 +31,19 @@ const PdfViewer = ({ url }: PdfViewerProps) => {
 
       const canvas = document.createElement("canvas");
       canvas.className = "mx-auto mb-4 shadow-md rounded";
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
+      // HD resolution
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
+      // Visual size
       canvas.style.width = `${viewport.width}px`;
       canvas.style.height = `${viewport.height}px`;
+      canvas.style.display = "block";
 
       wrapper.appendChild(canvas);
 
       const ctx = canvas.getContext("2d");
       if (ctx) {
+        ctx.scale(dpr, dpr);
         await page.render({ canvasContext: ctx, viewport }).promise;
       }
     }
@@ -91,8 +96,8 @@ const PdfViewer = ({ url }: PdfViewerProps) => {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-2 px-1">
+    <div className="flex flex-col" style={{ height: "100%", minHeight: 0 }}>
+      <div className="flex items-center justify-between mb-2 px-1 flex-shrink-0">
         <span className="text-sm text-muted-foreground">
           {loading ? "Carregando..." : `${numPages} página(s)`}
         </span>
@@ -117,10 +122,21 @@ const PdfViewer = ({ url }: PdfViewerProps) => {
 
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto bg-muted/30 rounded-lg"
-        style={{ display: loading ? "none" : "block", touchAction: "pan-x pan-y" }}
+        className="bg-muted/30 rounded-lg"
+        style={{
+          display: loading ? "none" : "block",
+          flex: "1 1 0",
+          minHeight: 0,
+          overflow: "auto",
+          touchAction: "pan-x pan-y",
+          position: "relative",
+        }}
       >
-        <div ref={wrapperRef} className="p-4" style={{ minWidth: "fit-content" }} />
+        <div
+          ref={wrapperRef}
+          className="p-4"
+          style={{ display: "inline-block", minWidth: "100%" }}
+        />
       </div>
     </div>
   );

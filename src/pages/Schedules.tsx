@@ -336,13 +336,13 @@ const Schedules = () => {
 
         {/* PDF Viewer Dialog */}
         <Dialog open={!!viewingPdf} onOpenChange={handleClosePdfViewer}>
-          <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-[90vh] p-4">
-            <DialogHeader>
+          <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-[90vh] p-4 flex flex-col">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle>Visualizar Horário</DialogTitle>
             </DialogHeader>
-            {viewingPdf && (
-              <PdfViewer url={viewingPdf} />
-            )}
+            <div className="flex-1 min-h-0">
+              {viewingPdf && <PdfViewer url={viewingPdf} />}
+            </div>
           </DialogContent>
         </Dialog>
       </div>

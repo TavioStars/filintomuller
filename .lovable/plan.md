@@ -2,33 +2,41 @@
 
 ## Problema
 
-O Microsoft Edge (e outros navegadores) bloqueia a exibição de PDFs dentro de `<iframe>` quando o PDF vem de um domínio diferente (cross-origin) - neste caso, o storage do Lovable Cloud. A mensagem "Esta página foi bloqueada pelo Microsoft Edge" confirma isso.
+O erro `ERR_BLOCKED_BY_CLIENT` no Microsoft Edge persiste mesmo com blob URLs porque o Edge bloqueia a renderização de PDFs dentro de `<iframe>` independentemente da origem. A solução é eliminar completamente o `<iframe>` e renderizar o PDF diretamente em elementos `<canvas>` usando a biblioteca `pdfjs-dist`.
 
 ## Solução
 
-Substituir o `<iframe>` direto por uma abordagem que **baixa o PDF como blob** e cria uma URL local (`blob:`) para exibição. Isso contorna o bloqueio cross-origin. Também corrigir o botão "Abrir em nova aba" para usar a mesma abordagem de blob.
+Usar `pdfjs-dist` para renderizar as páginas do PDF diretamente em canvas, com navegação entre páginas, zoom, e scroll — tudo dentro do Dialog existente.
 
-### Mudanças em `src/pages/Schedules.tsx`
+### Mudanças
 
-1. **Adicionar função `fetchPdfAsBlob`** que faz `fetch()` na URL do PDF, converte para blob, e retorna um `URL.createObjectURL(blob)`.
+**1. Instalar `pdfjs-dist` (v3.11.174 para compatibilidade simples)**
 
-2. **Alterar o botão "Visualizar"** para chamar `fetchPdfAsBlob`, armazenar a blob URL no state, e usar essa URL no iframe do Dialog.
+**2. Criar `src/components/PdfViewer.tsx`**
+- Componente que recebe uma URL, faz fetch como ArrayBuffer, e usa `pdfjs-dist` para renderizar cada página em `<canvas>`
+- Renderiza todas as páginas em sequência (scroll vertical) para uma pré-visualização completa
+- Inclui controle de zoom (+ / -)
+- Loading spinner enquanto renderiza
 
-3. **Alterar o botão "Abrir em nova aba"** para também usar blob: abrir o PDF via `window.open()` com a blob URL em vez de link direto.
-
-4. **Limpar blob URLs** ao fechar o dialog (`URL.revokeObjectURL`).
-
-5. **Adicionar estado de loading** enquanto o PDF é baixado, com feedback visual.
+**3. Atualizar `src/pages/Schedules.tsx`**
+- Substituir o `<iframe>` pelo componente `PdfViewer`
+- O estado `viewingPdf` passa a armazenar a URL original (não mais blob)
+- O `PdfViewer` faz o fetch internamente
+- Manter o botão "Abrir em nova aba" com abordagem blob para download
 
 ### Detalhes Técnicos
 
-- `fetch(url)` → `response.blob()` → `URL.createObjectURL(blob)` gera uma URL `blob:` local que o navegador não bloqueia
-- Revogar a URL ao fechar o dialog para liberar memória
-- Tratar erros de download com toast informativo
+- `pdfjs-dist` v3.x usa worker via `pdfjs-dist/build/pdf.worker.entry`
+- Cada página é renderizada em um `<canvas>` separado dentro de um container com scroll
+- Scale padrão de 1.5 para boa legibilidade
+- Fetch como `ArrayBuffer` → `pdfjsLib.getDocument({ data })` → renderiza em canvas
+- Zero dependência do viewer nativo do navegador = funciona em qualquer browser
 
-### Arquivo Modificado
+### Arquivos
 
 | Arquivo | Ação |
 |---|---|
-| `src/pages/Schedules.tsx` | Implementar fetch blob para visualização e abertura de PDFs |
+| `package.json` | Adicionar `pdfjs-dist@3.11.174` |
+| `src/components/PdfViewer.tsx` | Novo componente de renderização de PDF |
+| `src/pages/Schedules.tsx` | Substituir iframe pelo PdfViewer |
 

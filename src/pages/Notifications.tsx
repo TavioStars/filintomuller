@@ -9,6 +9,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { CreateNotificationDialog } from "@/components/CreateNotificationDialog";
 import LoadingScreen from "@/components/LoadingScreen";
+import { subscribeToPush } from "@/lib/pushNotifications";
 
 interface Notification {
   id: string;
@@ -66,10 +67,14 @@ const Notifications = () => {
   }, [user]);
 
   const handleEnablePush = async () => {
-    if (!("Notification" in window)) { setShowPushPrompt(false); return; }
-    const permission = await Notification.requestPermission();
-    if (permission === "granted" && user) {
-      localStorage.setItem("push_enabled", "true");
+    if (!user) { setShowPushPrompt(false); return; }
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+      setShowPushPrompt(false);
+      return;
+    }
+
+    const success = await subscribeToPush(user.id);
+    if (success) {
       await supabase.from("profiles").update({ push_enabled: true } as any).eq("id", user.id);
     }
     setShowPushPrompt(false);

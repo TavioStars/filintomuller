@@ -8,6 +8,7 @@ import { Plus, Upload, X, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { sendPushToAll } from "@/lib/pushNotifications";
 
 // Validation schema
 const notificationSchema = z.object({
@@ -155,9 +156,13 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
 
       if (error) throw error;
 
+      // Send push notification to all subscribers
+      const notifPreview = result.data.content.slice(0, 100);
+      await sendPushToAll(result.data.title, notifPreview);
+
       toast({
         title: "Notificação criada!",
-        description: "A notificação foi publicada com sucesso.",
+        description: "A notificação foi publicada e enviada por push.",
       });
 
       setOpen(false);

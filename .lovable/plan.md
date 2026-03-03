@@ -1,137 +1,101 @@
 
 
-## Plano de Atualizações
-
-Este é um conjunto grande de mudanças. Vou dividir em **4 blocos** para implementação organizada.
+## Plano de Atualizações — Revisão da Plataforma
 
 ---
 
-### Bloco 1 — Recursos de Agendamento
+### 1. Perfil do Usuário (Settings + Storage)
 
-**Mudanças nos recursos (`Scheduling.tsx` + `index.css` + `tailwind.config.ts`):**
+**Migração SQL:**
+- Adicionar coluna `avatar_url` (text, nullable) na tabela `profiles`
+- Criar bucket de storage `avatars` (público) com políticas RLS para upload/delete pelo próprio usuário
 
-| Atual | Novo |
-|---|---|
-| Sala de Informática | STE 2 |
-| (novo) | Datashow 3 |
-| (novo) | Notebook |
-| (novo) | Caixa de Som |
+**Settings.tsx** — Nova seção "Perfil" no topo:
+- Avatar redondo com foto ou ícone padrão (User icon)
+- Botão para upload de foto → abre file input → após selecionar, exibe cropper 1:1 (usando canvas nativo para corte, sem lib externa) → salva no bucket `avatars` → atualiza `profiles.avatar_url`
+- Exibe nome e cargo do usuário como campos somente leitura (texto, não inputs)
 
-Aulas renomeadas para "1ª Aula", "2ª Aula", etc.
-
-**RESOURCES** passará de 5 para **8 recursos**. Cores do calendário serão recalculadas:
-- Total de slots: 6 aulas × 8 recursos = **48**
-- Verde: até 10 agendamentos
-- Amarelo: 11-24
-- Vermelho: 25-48
-
-Novas variáveis CSS para as 3 cores dos novos recursos.
+**RLS do profiles:** A coluna `avatar_url` pode ser atualizada pelo próprio usuário (já permitido pela política atual de UPDATE, desde que role/status não mudem).
 
 ---
 
-### Bloco 2 — Sistema de Notificações In-App
+### 2. Admin — Edição de Usuário com Foto, Nome e Cargo
 
-**Nova tabela `in_app_notifications`:**
+**UsersSheet.tsx:**
+- No dialog de editar usuário, exibir avatar (ou ícone padrão) no topo
+- Campo "Nome" passa a ser **editável** (Input não disabled)
+- Adicionar estado `editedName` e incluir no `handleSaveChanges`
+- `handleSaveChanges` usa a RPC `update_account_status` para role/status, mas para nome e role precisa de um novo approach: criar uma função RPC `admin_update_profile` que permite admins alterarem `name` e `role` de qualquer usuário (pois a RLS impede que outro usuário atualize esses campos)
+
+**Nova função SQL `admin_update_profile`:**
 ```sql
-CREATE TABLE in_app_notifications (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  type text NOT NULL, -- 'new_notification', 'booking_deleted'
-  title text NOT NULL,
-  body text NOT NULL,
-  data jsonb, -- { notification_id, booking_id, admin_name, etc. }
-  read boolean DEFAULT false,
-  created_at timestamptz DEFAULT now()
-);
+CREATE FUNCTION public.admin_update_profile(
+  target_user_id uuid, new_name text, new_role text
+) RETURNS void SECURITY DEFINER ...
+-- Verifica has_role(auth.uid(), 'admin'), depois UPDATE profiles SET name, role
 ```
-Com RLS: usuários só leem as próprias notificações.
-
-**Quando uma notificação é criada por admin** → trigger/function insere uma `in_app_notification` para todos os usuários com tipo `new_notification`, contendo título, preview do conteúdo e banner.
-
-**Quando um admin apaga um agendamento de outro usuário** → o código em `handleDeleteBooking` cria uma `in_app_notification` para o dono do agendamento, com o nome do admin que apagou.
-
-**UI:** Ícone de sino no header/navigation com badge de contagem de não lidas. Ao clicar, abre lista de notificações in-app. Clicar em uma notificação do tipo `new_notification` navega para `/notifications`.
 
 ---
 
-### Bloco 3 — Notificações do Navegador (Push via Browser API)
+### 3. Fix — ScrollArea de Select (Categorias/Cargos)
 
-**Settings.tsx** — Nova card com toggle de notificações:
-- Desativado: ícone de sino cinza riscado (`BellOff`)
-- Ativado: ícone de sino verde (`Bell`)
-- Ao ativar: chama `Notification.requestPermission()`
-- Estado salvo em `localStorage` + coluna `push_enabled` na tabela `profiles`
+O bug de arrastar nas listas de Select (`SelectContent`) é um problema conhecido do Radix Select em mobile. A correção é adicionar `position="popper"` e `sideOffset` no `SelectContent` dos componentes Auth.tsx e UsersSheet.tsx para melhorar o comportamento de scroll.
 
-**Notifications.tsx** — Popup ao entrar:
-- Se `push_enabled` é `false`, mostra dialog perguntando se quer ativar
-- Se já ativado, não mostra nada
-
-**Envio de notificação browser:**
-- Quando uma `in_app_notification` é criada, se o usuário está com a aba aberta e tem permissão, dispara `new Notification(title, { body, icon })` via realtime subscription
+Alternativa mais robusta: usar `Popover` + lista customizada ao invés de `Select` nos pontos problemáticos. Porém a correção mais simples é adicionar a prop `position="popper"` no `SelectContent`.
 
 ---
 
-### Bloco 4 — Redesign da Aba de Agendamentos (inspirado na imagem)
+### 4. Revisão — Alunos: Visualizar Sem Agir
 
-**Layout principal** (desktop: 2 colunas, mobile: stack):
+**Scheduling.tsx** — Atualmente alunos recebem toast de "Acesso restrito" ao clicar em um dia. Corrigir para:
+- Alunos **podem** clicar e ver agendamentos do dia (aba "Do Dia")
+- Alunos **não podem** agendar (botão "Novo agendamento" oculto, 2º clique não abre dialog)
+- Remover o toast de bloqueio no `handleDayClick` para alunos — eles devem poder navegar e visualizar
 
-```text
-┌─────────────────────────────────────────────────────┐
-│  Header: ícone + "Agendamento"   [Mat][Vesp][Not]   │
-├──────────────────┬──────────────────────────────────┤
-│   CALENDÁRIO     │  Tabs: [Do Dia] [Últimos]       │
-│   ┌──────────┐   │  Filtro: [Todos][STE 2][DS1]... │
-│   │ março    │   │  ─────────────────────────────── │
-│   │ 1 2 3... │   │  03/03/2026  2 agend.           │
-│   │          │   │  ┌─────────────────────────┐    │
-│   └──────────┘   │  │ STE 2  •  2ª Aula       │    │
-│                  │  │ 👤 Professor — Nome      │    │
-│   DATA SELECION. │  └─────────────────────────┘    │
-│   03/03/2026     │                                  │
-│   2 agendamentos │  (scroll vertical)               │
-│                  │                                  │
-│   [+ Novo agend.]│                                  │
-│                  │                                  │
-│   RECURSOS       │                                  │
-│   ● STE 2       │                                  │
-│   ● Laboratório  │                                  │
-│   ● ...          │                                  │
-├──────────────────┴──────────────────────────────────┤
-│  Total: X   STE 2: Y   Lab: Z   ...                │
-└─────────────────────────────────────────────────────┘
-```
+---
 
-**Mudanças de comportamento:**
-- **1º clique no dia**: seleciona o dia e mostra agendamentos na aba "Do Dia" (sem dialog)
-- **2º clique no mesmo dia**: abre dialog com opções "Agendar" e "Ver detalhes"
-- **Aba "Do Dia"**: mostra agendamentos do dia selecionado, filtráveis por recurso. Se vazio: "Não há agendamentos para este dia"
-- **Aba "Últimos"**: mantém o comportamento atual de agendamentos recentes, também com filtro por recurso
-- **Barra de filtro horizontal** com scroll: botões para cada recurso + "Todos"
-- **Legenda de recursos** abaixo do calendário com cores
-- **Rodapé** com contagem por recurso
+### 5. Badge BETA — Materiais Didáticos
 
-Remoção do dialog intermediário no 1º clique (fica inline na aba "Do Dia").
+**Menu.tsx** — No card de "Materiais Didáticos", adicionar um `<Badge>` com texto "BETA" ao lado do título, com estilo sutil (ex: `variant="secondary"` com texto pequeno).
+
+---
+
+### 6. Rodapé de Agendamentos — Total do Mês + Individuais do Dia
+
+**Scheduling.tsx:**
+- **"Total"** → passa a mostrar total de agendamentos **do mês atual** (filtrar por `selectedDate.getMonth()` e `selectedDate.getFullYear()`)
+- **Contagens por recurso** → mostram total **apenas do dia selecionado** (não de todo o período)
+- Labels atualizados: "Total do mês: X" e cada recurso "Recurso: Y (hoje)"
+
+---
+
+### 7. Horário de Agendamento na Aba "Últimos"
+
+**Scheduling.tsx — `renderBookingCard`:**
+- Na aba "Últimos", exibir o horário em que o booking foi criado (`created_at`), convertido para o fuso de MS (America/Campo_Grande, UTC-4)
+- Usar `toLocaleString('pt-BR', { timeZone: 'America/Campo_Grande', hour: '2-digit', minute: '2-digit' })` no `created_at`
+- Exibir como "Agendado às HH:MM" abaixo da data
 
 ---
 
 ### Arquivos Afetados
 
-| Arquivo | Mudanças |
+| Arquivo | Mudança |
 |---|---|
-| `src/pages/Scheduling.tsx` | Recursos, aulas, redesign completo com abas Do Dia/Últimos, filtro por recurso, click duplo |
-| `src/index.css` | Novas variáveis CSS para Datashow 3, Notebook, Caixa de Som |
-| `tailwind.config.ts` | Novas cores para os 3 recursos |
-| `src/pages/Settings.tsx` | Toggle de notificações browser |
-| `src/pages/Notifications.tsx` | Popup para ativar notificações |
-| `src/components/Navigation.tsx` | Badge de notificações in-app no sino |
-| **Novo** `src/hooks/useInAppNotifications.tsx` | Hook para notificações in-app com realtime |
-| **Novo** `src/components/NotificationsBell.tsx` | Componente do sino com badge e dropdown |
-| **Migração SQL** | Tabela `in_app_notifications`, triggers, coluna `push_enabled` em profiles, RLS |
+| **Migração SQL** | `avatar_url` em profiles, bucket `avatars`, função `admin_update_profile` |
+| `src/pages/Settings.tsx` | Seção de perfil com avatar, cropper, nome/cargo readonly |
+| `src/components/UsersSheet.tsx` | Avatar no dialog, nome editável, salvar via RPC |
+| `src/pages/Auth.tsx` | `position="popper"` no SelectContent |
+| `src/pages/Scheduling.tsx` | Alunos podem visualizar; rodapé com total do mês + dia; horário no card |
+| `src/pages/Menu.tsx` | Badge BETA em Materiais Didáticos |
 
-### Ordem de implementação sugerida
+### Ordem de implementação
 
-1. Bloco 1 (recursos + aulas) — mudança de dados simples
-2. Bloco 4 (redesign agendamentos) — depende do Bloco 1
-3. Bloco 2 (notificações in-app) — migração DB + lógica
-4. Bloco 3 (notificações browser) — depende do Bloco 2
+1. Migração SQL (avatar_url, bucket, admin_update_profile)
+2. Perfil na Settings + Cropper
+3. Admin edição de nome/cargo no UsersSheet
+4. Fix Select scroll
+5. Revisão alunos
+6. Badge BETA
+7. Rodapé + horário de agendamento
 

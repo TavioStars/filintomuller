@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AvatarCropper from "@/components/AvatarCropper";
+import { subscribeToPush, unsubscribeFromPush } from "@/lib/pushNotifications";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -54,24 +55,24 @@ const Settings = () => {
 
   const togglePushNotifications = async () => {
     if (!pushEnabled) {
-      if (!("Notification" in window)) {
-        toast({ variant: "destructive", title: "Não suportado", description: "Seu navegador não suporta notificações." });
+      if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+        toast({ variant: "destructive", title: "Não suportado", description: "Seu navegador não suporta notificações push." });
         return;
       }
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
+      if (!user) return;
+
+      const success = await subscribeToPush(user.id);
+      if (!success) {
         toast({ variant: "destructive", title: "Permissão negada", description: "Você precisa permitir notificações no navegador." });
         return;
       }
+
       setPushEnabled(true);
-      localStorage.setItem("push_enabled", "true");
-      if (user) {
-        await supabase.from("profiles").update({ push_enabled: true } as any).eq("id", user.id);
-      }
+      await supabase.from("profiles").update({ push_enabled: true } as any).eq("id", user.id);
       toast({ title: "Notificações ativadas! 🔔" });
     } else {
+      await unsubscribeFromPush();
       setPushEnabled(false);
-      localStorage.setItem("push_enabled", "false");
       if (user) {
         await supabase.from("profiles").update({ push_enabled: false } as any).eq("id", user.id);
       }

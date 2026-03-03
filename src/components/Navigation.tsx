@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { CalendarDays, MenuSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import NotificationsBell from "@/components/NotificationsBell";
 
 const Navigation = () => {
   const location = useLocation();
@@ -12,7 +13,7 @@ const Navigation = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:static md:border-0 md:bg-transparent">
-      <div className="flex justify-around md:justify-center md:gap-4 p-2">
+      <div className="flex justify-around md:justify-center md:gap-4 p-2 items-center">
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = location.pathname === link.to;
@@ -33,6 +34,7 @@ const Navigation = () => {
             </Link>
           );
         })}
+        <NotificationsBell />
       </div>
     </nav>
   );

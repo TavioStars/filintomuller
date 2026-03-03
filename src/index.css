@@ -41,6 +41,9 @@ All colors MUST be HSL.
     --datashow-2: 30 85% 55%;
     --computer-room: 330 70% 60%;
     --laboratory: 45 85% 60%;
+    --datashow-3: 160 60% 45%;
+    --notebook: 220 60% 55%;
+    --speaker: 350 65% 55%;
 
     --gradient-start: 110 50% 95%;
     --gradient-middle: 85 55% 70%;
@@ -99,6 +102,9 @@ All colors MUST be HSL.
     --datashow-2: 30 85% 55%;
     --computer-room: 330 70% 60%;
     --laboratory: 45 85% 60%;
+    --datashow-3: 160 60% 50%;
+    --notebook: 220 60% 60%;
+    --speaker: 350 65% 60%;
 
     --gradient-start: 120 20% 20%;
     --gradient-middle: 120 30% 35%;

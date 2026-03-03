@@ -31,7 +31,6 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
 
     const registration = await navigator.serviceWorker.ready;
     const publicKey = await getVapidPublicKey();
-
     const reg = registration as any;
     const subscription = await reg.pushManager.subscribe({
       userVisibleOnly: true,
@@ -60,6 +59,37 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
   } catch (err) {
     console.error("Push subscription failed:", err);
     return false;
+  }
+}
+
+/** Re-subscribe silently if push is enabled but subscription is missing/stale */
+export async function refreshPushSubscription(userId: string): Promise<void> {
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    if (Notification.permission !== "granted") return;
+
+    const registration = await navigator.serviceWorker.ready;
+    const reg = registration as any;
+    const existing = await reg.pushManager.getSubscription();
+
+    if (existing) {
+      // Re-upsert to ensure DB has the current subscription
+      const subJson = existing.toJSON();
+      await supabase.from("push_subscriptions" as any).upsert(
+        {
+          user_id: userId,
+          endpoint: subJson.endpoint!,
+          p256dh: subJson.keys!.p256dh!,
+          auth: subJson.keys!.auth!,
+        },
+        { onConflict: "endpoint" }
+      );
+    } else {
+      // No active subscription — re-subscribe
+      await subscribeToPush(userId);
+    }
+  } catch (err) {
+    console.error("Push refresh failed:", err);
   }
 }
 

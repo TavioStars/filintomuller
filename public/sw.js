@@ -9,8 +9,8 @@ self.addEventListener('push', function(event) {
   const title = data.title || 'Nova notificação';
   const options = {
     body: data.body || '',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     data: data.data || {},
     vibrate: [200, 100, 200],
   };

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import LoadingScreen from "@/components/LoadingScreen";
 import { useAccountStatus } from "./useAccountStatus";
+import { refreshPushSubscription } from "@/lib/pushNotifications";
 
 interface AuthContextType {
   user: User | null;
@@ -41,6 +42,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Auto-refresh push subscription on login
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("profiles").select("push_enabled").eq("id", user.id).single().then(({ data }) => {
+      if (data?.push_enabled) {
+        refreshPushSubscription(user.id);
+      }
+    });
+  }, [user]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({

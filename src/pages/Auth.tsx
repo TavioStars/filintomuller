@@ -197,7 +197,7 @@ const Auth = () => {
                   <Label htmlFor="signup-role">Função na escola</Label>
                   <Select value={role} onValueChange={setRole} required>
                     <SelectTrigger id="signup-role"><SelectValue placeholder="Selecione sua função" /></SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" sideOffset={4}>
                       {roleOptions.map((option) => (<SelectItem key={option} value={option}>{option}</SelectItem>))}
                     </SelectContent>
                   </Select>

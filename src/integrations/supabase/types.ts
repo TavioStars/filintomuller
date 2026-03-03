@@ -241,6 +241,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           id: string
           name: string
@@ -250,6 +251,7 @@ export type Database = {
           status: Database["public"]["Enums"]["access_status"]
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           id: string
           name: string
@@ -259,6 +261,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["access_status"]
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -361,6 +364,10 @@ export type Database = {
     }
     Functions: {
       add_admin_role: { Args: { target_user_id: string }; Returns: undefined }
+      admin_update_profile: {
+        Args: { new_name: string; new_role: string; target_user_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

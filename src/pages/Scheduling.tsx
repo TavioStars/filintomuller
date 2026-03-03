@@ -116,17 +116,13 @@ const Scheduling = () => {
 
   const handleDayClick = (day: Date, modifiers: DayModifiers) => {
     if (modifiers.unavailable) return;
-    if (isStudent && !isAdmin) {
-      toast({ variant: "destructive", title: "Acesso restrito", description: "Alunos não têm permissão para visualizar ou criar agendamentos." });
-      return;
-    }
 
     const localDate = new Date(day);
     localDate.setHours(0, 0, 0, 0);
     const dateStr = formatDateStr(localDate);
 
-    if (lastClickedDate.current === dateStr) {
-      // Second click on same day — open action dialog
+    if (lastClickedDate.current === dateStr && !isStudent && !isAnonymous) {
+      // Second click on same day — open action dialog (not for students)
       setShowActionDialog(true);
       lastClickedDate.current = null;
     } else {
@@ -261,19 +257,29 @@ const Scheduling = () => {
   const recentBookings = bookings.filter(b => b.period === currentPeriod);
   const filteredRecentBookings = resourceFilter === "all" ? recentBookings : recentBookings.filter(b => b.resource === resourceFilter);
 
-  // Resource counts for footer
-  const resourceCounts = RESOURCES.map(r => ({
+  // Monthly total
+  const monthlyTotal = bookings.filter(b => {
+    const [y, m] = b.date.split('-');
+    return parseInt(y) === selectedDate.getFullYear() && parseInt(m) === selectedDate.getMonth() + 1 && b.period === currentPeriod;
+  }).length;
+
+  // Daily resource counts
+  const dailyResourceCounts = RESOURCES.map(r => ({
     ...r,
-    count: bookings.filter(b => b.resource === r.label && b.period === currentPeriod).length,
+    count: dayBookings.filter(b => b.resource === r.label).length,
   }));
 
   if (adminLoading || loading) return <LoadingScreen />;
 
-  const renderBookingCard = (booking: Booking) => {
+  const renderBookingCard = (booking: Booking, showTime = false) => {
     const resourceData = RESOURCES.find(r => r.label === booking.resource);
     const canDelete = isAdmin || user?.id === booking.user_id;
     const [y, m, d] = booking.date.split('-');
     const dateDisplay = `${d}/${m}/${y}`;
+
+    const createdTime = showTime && booking.created_at
+      ? new Date(booking.created_at).toLocaleString('pt-BR', { timeZone: 'America/Campo_Grande', hour: '2-digit', minute: '2-digit' })
+      : null;
 
     return (
       <div key={booking.id} className="p-4 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
@@ -288,13 +294,16 @@ const Scheduling = () => {
               <span className="text-sm text-foreground">{booking.class_name}</span>
             </div>
             <p className="text-xs text-muted-foreground">{dateDisplay}</p>
+            {createdTime && (
+              <p className="text-xs text-muted-foreground">Agendado às {createdTime}</p>
+            )}
             {booking.profiles && (
               <p className="text-xs text-muted-foreground mt-1">
                 👤 {booking.profiles.role} — {booking.profiles.name}
               </p>
             )}
           </div>
-          {canDelete && (
+          {canDelete && !isStudent && !isAnonymous && (
             <Button
               variant="destructive"
               size="icon"
@@ -451,7 +460,7 @@ const Scheduling = () => {
                               </p>
                             </div>
                           ) : (
-                            filteredDayBookings.map(renderBookingCard)
+                            filteredDayBookings.map(b => renderBookingCard(b))
                           )}
                         </div>
                       </TabsContent>
@@ -469,7 +478,7 @@ const Scheduling = () => {
                               <p className="text-muted-foreground">Nenhum agendamento ainda</p>
                             </div>
                           ) : (
-                            filteredRecentBookings.map(renderBookingCard)
+                            filteredRecentBookings.map(b => renderBookingCard(b, true))
                           )}
                         </div>
                       </TabsContent>
@@ -482,9 +491,9 @@ const Scheduling = () => {
               <Card className="mt-4 p-3">
                 <div className="flex flex-wrap gap-3 justify-center items-center text-xs">
                   <span className="font-semibold text-foreground">
-                    Total: {recentBookings.length}
+                    Total do mês: {monthlyTotal}
                   </span>
-                  {resourceCounts.filter(r => r.count > 0).map(r => (
+                  {dailyResourceCounts.filter(r => r.count > 0).map(r => (
                     <span key={r.id} className={`${r.textColor} font-medium`}>
                       {r.emoji} {r.label}: {r.count}
                     </span>

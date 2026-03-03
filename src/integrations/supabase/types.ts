@@ -88,6 +88,47 @@ export type Database = {
           },
         ]
       }
+      in_app_notifications: {
+        Row: {
+          body: string
+          created_at: string | null
+          data: Json | null
+          id: string
+          read: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          read?: boolean | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string | null
+          data?: Json | null
+          id?: string
+          read?: boolean | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "in_app_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_categories: {
         Row: {
           created_at: string
@@ -204,6 +245,7 @@ export type Database = {
           id: string
           name: string
           pending_approval: boolean | null
+          push_enabled: boolean | null
           role: string
           status: Database["public"]["Enums"]["access_status"]
         }
@@ -212,6 +254,7 @@ export type Database = {
           id: string
           name: string
           pending_approval?: boolean | null
+          push_enabled?: boolean | null
           role: string
           status?: Database["public"]["Enums"]["access_status"]
         }
@@ -220,6 +263,7 @@ export type Database = {
           id?: string
           name?: string
           pending_approval?: boolean | null
+          push_enabled?: boolean | null
           role?: string
           status?: Database["public"]["Enums"]["access_status"]
         }

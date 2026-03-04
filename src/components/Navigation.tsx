@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { CalendarDays, MenuSquare, Bell } from "lucide-react";
+import { CalendarDays, MenuSquare, Bell, X, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInAppNotifications } from "@/hooks/useInAppNotifications";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -31,13 +31,15 @@ const Navigation = () => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useInAppNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
 
+  // Only show unread notifications in the mobile popover
+  const unreadNotifications = notifications.filter(n => !n.read);
+
   const links = [
     { to: "/menu", label: "Menu", icon: MenuSquare },
     { to: "/scheduling", label: "Agendamento", icon: CalendarDays },
   ];
 
   const activeIndex = links.findIndex((l) => location.pathname === l.to);
-  // For notifications, activeIndex will be -1 when popover is open but we track separately
   const notifActive = notifOpen;
   const effectiveActive = notifActive ? 2 : activeIndex;
 
@@ -47,6 +49,15 @@ const Navigation = () => {
       navigate(`/notifications/${notif.data.notification_id}`);
     }
     setNotifOpen(false);
+  };
+
+  const handleDismiss = (e: React.MouseEvent, notifId: string) => {
+    e.stopPropagation();
+    markAsRead(notifId);
+  };
+
+  const handleMarkAllAsRead = () => {
+    markAllAsRead();
   };
 
   if (showMobileNav) {
@@ -80,7 +91,7 @@ const Navigation = () => {
             );
           })}
 
-          {/* Notifications icon inline */}
+          {/* Notifications icon */}
           <Popover open={notifOpen} onOpenChange={setNotifOpen}>
             <PopoverTrigger asChild>
               <button
@@ -100,24 +111,25 @@ const Navigation = () => {
             <PopoverContent className="w-80 p-0" align="end" side="top" sideOffset={12}>
               <div className="flex items-center justify-between p-3 border-b">
                 <p className="font-semibold text-sm">Notificações</p>
-                {unreadCount > 0 && (
-                  <Button variant="ghost" size="sm" className="text-xs h-7" onClick={markAllAsRead}>
+                {unreadNotifications.length > 0 && (
+                  <Button variant="ghost" size="sm" className="text-xs h-7 gap-1" onClick={handleMarkAllAsRead}>
+                    <CheckCheck className="h-3.5 w-3.5" />
                     Marcar todas como lidas
                   </Button>
                 )}
               </div>
               <ScrollArea className="max-h-72">
-                {notifications.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">Sem notificações</p>
+                {unreadNotifications.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">Sem notificações novas</p>
                 ) : (
-                  notifications.map(notif => (
+                  unreadNotifications.map(notif => (
                     <div
                       key={notif.id}
-                      className={`p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors ${!notif.read ? "bg-primary/5" : ""}`}
+                      className="p-3 border-b cursor-pointer hover:bg-muted/50 transition-colors bg-primary/5"
                       onClick={() => handleNotificationClick(notif)}
                     >
                       <div className="flex items-start gap-2">
-                        {!notif.read && <span className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />}
+                        <span className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium truncate">{notif.title}</p>
                           <p className="text-xs text-muted-foreground line-clamp-2">{notif.body}</p>
@@ -125,6 +137,13 @@ const Navigation = () => {
                             {new Date(notif.created_at).toLocaleString("pt-BR")}
                           </p>
                         </div>
+                        <button
+                          onClick={(e) => handleDismiss(e, notif.id)}
+                          className="shrink-0 p-1 rounded-full hover:bg-muted transition-colors"
+                          aria-label="Dispensar notificação"
+                        >
+                          <X className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
                       </div>
                     </div>
                   ))

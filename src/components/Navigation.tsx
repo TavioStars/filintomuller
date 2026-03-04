@@ -1,12 +1,28 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { CalendarDays, MenuSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import NotificationsBell from "@/components/NotificationsBell";
-import { useIsMobile } from "@/hooks/use-mobile";
+
+const useIsPortraitOrMobile = () => {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const check = () => setShow(window.innerWidth < 768 || window.innerHeight > window.innerWidth);
+    check();
+    window.addEventListener("resize", check);
+    const mql = window.matchMedia("(orientation: portrait)");
+    mql.addEventListener("change", check);
+    return () => {
+      window.removeEventListener("resize", check);
+      mql.removeEventListener("change", check);
+    };
+  }, []);
+  return show;
+};
 
 const Navigation = () => {
   const location = useLocation();
-  const isMobile = useIsMobile();
+  const showMobileNav = useIsPortraitOrMobile();
 
   const links = [
     { to: "/menu", label: "Menu", icon: MenuSquare },
@@ -15,7 +31,7 @@ const Navigation = () => {
 
   const activeIndex = links.findIndex((l) => location.pathname === l.to);
 
-  if (isMobile) {
+  if (showMobileNav) {
     return (
       <nav className="fixed bottom-4 left-0 right-0 z-50 flex items-center justify-center gap-3 px-4">
         <div className="relative flex items-center gap-2 rounded-full bg-card border border-border shadow-lg p-2">

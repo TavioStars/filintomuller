@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Bell, Clock, Settings, ArrowLeft, BookOpen, Calendar, GraduationCap, Shield } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
-
+import NavigationBar from "@/components/Navigation";
 const Menu = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,16 +30,18 @@ const Menu = () => {
           <ArrowLeft className="h-4 w-4" /> Voltar
         </Button>
 
-        <Tabs value={currentTab} className="w-full mb-8">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
-            <TabsTrigger value="menu" onClick={() => navigate("/menu")} className="gap-2">
-              <BookOpen className="h-4 w-4" /> Menu
-            </TabsTrigger>
-            <TabsTrigger value="agendamento" onClick={() => navigate("/scheduling")} className="gap-2">
-              <Calendar className="h-4 w-4" /> Agendamento
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="hidden md:block">
+          <Tabs value={currentTab} className="w-full mb-8">
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+              <TabsTrigger value="menu" onClick={() => navigate("/menu")} className="gap-2">
+                <BookOpen className="h-4 w-4" /> Menu
+              </TabsTrigger>
+              <TabsTrigger value="agendamento" onClick={() => navigate("/scheduling")} className="gap-2">
+                <Calendar className="h-4 w-4" /> Agendamento
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
         <div className="flex items-center gap-3 mb-8">
           <BookOpen className="h-8 w-8 text-gradient-end" />
@@ -76,6 +78,8 @@ const Menu = () => {
           <p className="text-sm text-muted-foreground/60">Desenvolvido por Otávio Henrique 3º B 2025</p>
         </div>
       </div>
+
+      <NavigationBar />
     </div>
   );
 };

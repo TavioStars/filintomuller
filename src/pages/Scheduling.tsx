@@ -15,6 +15,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { useToast } from "@/hooks/use-toast";
 import LoadingScreen from "@/components/LoadingScreen";
 import { Badge } from "@/components/ui/badge";
+import NavigationBar from "@/components/Navigation";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 type Period = "matutino" | "vespertino" | "noturno";
@@ -326,16 +327,18 @@ const Scheduling = () => {
           <ArrowLeft className="h-4 w-4" /> Voltar
         </Button>
 
-        <Tabs value={currentTab} className="w-full mb-6">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
-            <TabsTrigger value="menu" onClick={() => navigate("/menu")} className="gap-2">
-              <BookOpen className="h-4 w-4" /> Menu
-            </TabsTrigger>
-            <TabsTrigger value="agendamento" onClick={() => navigate("/scheduling")} className="gap-2">
-              <CalendarIcon className="h-4 w-4" /> Agendamento
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="hidden md:block">
+          <Tabs value={currentTab} className="w-full mb-6">
+            <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+              <TabsTrigger value="menu" onClick={() => navigate("/menu")} className="gap-2">
+                <BookOpen className="h-4 w-4" /> Menu
+              </TabsTrigger>
+              <TabsTrigger value="agendamento" onClick={() => navigate("/scheduling")} className="gap-2">
+                <CalendarIcon className="h-4 w-4" /> Agendamento
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
         <div className="flex items-center gap-3 mb-6">
           <CalendarDays className="h-8 w-8 text-gradient-end" />
@@ -583,6 +586,8 @@ const Scheduling = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      <NavigationBar />
     </div>
   );
 };

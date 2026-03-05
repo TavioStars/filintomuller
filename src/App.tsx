@@ -26,12 +26,36 @@ const queryClient = new QueryClient();
 const App = () => {
   // Apply theme from localStorage immediately on mount
   useEffect(() => {
-    const theme = localStorage.getItem("theme") || "light";
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    const applyTheme = () => {
+      const theme = localStorage.getItem("theme") || "light";
+      const isDark = theme === "dark";
+      if (isDark) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+      // Update theme-color meta tag dynamically
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute("content", isDark ? "#272725" : "#FAFAFA");
+      }
+    };
+    applyTheme();
+    // Listen for storage changes (theme toggle from Settings page)
+    window.addEventListener("storage", applyTheme);
+    // Also observe class changes on documentElement for immediate updates
+    const observer = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains("dark");
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) {
+        meta.setAttribute("content", isDark ? "#272725" : "#FAFAFA");
+      }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => {
+      window.removeEventListener("storage", applyTheme);
+      observer.disconnect();
+    };
   }, []);
 
   return (

@@ -273,15 +273,21 @@ const Scheduling = () => {
 
   if (adminLoading || loading) return <LoadingScreen />;
 
-  const renderBookingCard = (booking: Booking, showTime = false) => {
+  const renderBookingCard = (booking: Booking, context: "day" | "recent" = "day") => {
     const resourceData = RESOURCES.find(r => r.label === booking.resource);
     const canDelete = isAdmin || user?.id === booking.user_id;
     const [y, m, d] = booking.date.split('-');
     const dateDisplay = `${d}/${m}/${y}`;
+    const isAdminDeletingOther = isAdmin && user?.id !== booking.user_id;
 
-    const createdTime = showTime && booking.created_at
-      ? new Date(booking.created_at).toLocaleString('pt-BR', { timeZone: 'America/Campo_Grande', hour: '2-digit', minute: '2-digit' })
+    const createdDate = booking.created_at
+      ? new Date(booking.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Campo_Grande' })
       : null;
+    const createdTime = booking.created_at
+      ? new Date(booking.created_at).toLocaleTimeString('pt-BR', { timeZone: 'America/Campo_Grande', hour: '2-digit', minute: '2-digit' })
+      : null;
+
+    const periodLabel = booking.period === "matutino" ? "Matutino" : booking.period === "vespertino" ? "Vespertino" : "Noturno";
 
     return (
       <div key={booking.id} className="p-4 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-shadow">
@@ -295,9 +301,32 @@ const Scheduling = () => {
               <span className="text-muted-foreground">•</span>
               <span className="text-sm text-foreground">{booking.class_name}</span>
             </div>
-            <p className="text-xs text-muted-foreground">{dateDisplay}</p>
-            {createdTime && (
-              <p className="text-xs text-muted-foreground">Agendado às {createdTime}</p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs text-muted-foreground">{dateDisplay}</p>
+              {context === "day" && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-5 w-5 shrink-0">
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 text-sm space-y-1.5">
+                    <p className="font-semibold text-foreground">Detalhes do Agendamento</p>
+                    <p><span className="text-muted-foreground">Recurso:</span> {booking.resource}</p>
+                    <p><span className="text-muted-foreground">Aula:</span> {booking.class_name}</p>
+                    <p><span className="text-muted-foreground">Período:</span> {periodLabel}</p>
+                    {booking.profiles && (
+                      <p><span className="text-muted-foreground">Agendado por:</span> {booking.profiles.name}</p>
+                    )}
+                    {createdDate && createdTime && (
+                      <p><span className="text-muted-foreground">Criado em:</span> {createdDate} às {createdTime}</p>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+            {context === "recent" && createdDate && createdTime && (
+              <p className="text-xs text-muted-foreground">Agendado em {createdDate} às {createdTime}</p>
             )}
             {booking.profiles && (
               <p className="text-xs text-muted-foreground mt-1">
@@ -308,11 +337,11 @@ const Scheduling = () => {
           {canDelete && !isStudent && !isAnonymous && (
             <Button
               variant="destructive"
-              size="icon"
-              className="shrink-0 h-8 w-8"
+              size={isAdminDeletingOther ? "sm" : "icon"}
+              className={isAdminDeletingOther ? "shrink-0 h-8 px-2 gap-1" : "shrink-0 h-8 w-8"}
               onClick={() => handleDeleteBooking(booking.id, booking.user_id, booking.resource, `${d}/${m}/${y}`)}
             >
-              {isAdmin && user?.id !== booking.user_id && <Shield className="h-3 w-3" />}
+              {isAdminDeletingOther && <Shield className="h-3 w-3" />}
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -464,7 +493,7 @@ const Scheduling = () => {
                               </p>
                             </div>
                           ) : (
-                            filteredDayBookings.map(b => renderBookingCard(b))
+                            filteredDayBookings.map(b => renderBookingCard(b, "day"))
                           )}
                         </div>
                       </TabsContent>
@@ -482,7 +511,7 @@ const Scheduling = () => {
                               <p className="text-muted-foreground">Nenhum agendamento ainda</p>
                             </div>
                           ) : (
-                            filteredRecentBookings.map(b => renderBookingCard(b, true))
+                            filteredRecentBookings.map(b => renderBookingCard(b, "recent"))
                           )}
                         </div>
                       </TabsContent>

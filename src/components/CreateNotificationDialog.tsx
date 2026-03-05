@@ -112,12 +112,13 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
 
       let bannerUrl = null;
       if (bannerImage) {
-        const bannerPath = `${user.id}/${Date.now()}_${bannerImage.name}`;
+        const ext = bannerImage.name.split('.').pop() || 'jpg';
+        const bannerPath = `${user.id}/${crypto.randomUUID()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("notification-images")
-          .upload(bannerPath, bannerImage);
+          .upload(bannerPath, bannerImage, { contentType: bannerImage.type });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) throw new Error(`Erro no upload do banner: ${uploadError.message}`);
 
         const { data: { publicUrl } } = supabase.storage
           .from("notification-images")
@@ -128,12 +129,13 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
 
       const additionalUrls: string[] = [];
       for (const img of additionalImages) {
-        const imgPath = `${user.id}/${Date.now()}_${img.name}`;
+        const ext = img.name.split('.').pop() || 'jpg';
+        const imgPath = `${user.id}/${crypto.randomUUID()}.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("notification-images")
-          .upload(imgPath, img);
+          .upload(imgPath, img, { contentType: img.type });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) throw new Error(`Erro no upload da imagem: ${uploadError.message}`);
 
         const { data: { publicUrl } } = supabase.storage
           .from("notification-images")
@@ -172,7 +174,7 @@ export const CreateNotificationDialog = ({ onCreated }: { onCreated: () => void 
       console.error("Error creating notification:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível criar a notificação.",
+        description: error instanceof Error ? error.message : "Não foi possível criar a notificação.",
         variant: "destructive",
       });
     } finally {

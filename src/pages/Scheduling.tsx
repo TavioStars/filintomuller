@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CalendarDays, ArrowLeft, Trash2, BookOpen, Calendar as CalendarIcon, Shield, Plus, Filter, Clock } from "lucide-react";
+import { CalendarDays, ArrowLeft, Trash2, BookOpen, Calendar as CalendarIcon, Shield, Plus, Filter, Clock, Info, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { DayModifiers } from "react-day-picker";
@@ -17,6 +17,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import { Badge } from "@/components/ui/badge";
 import NavigationBar from "@/components/Navigation";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 type Period = "matutino" | "vespertino" | "noturno";
 

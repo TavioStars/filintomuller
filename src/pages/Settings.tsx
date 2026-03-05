@@ -51,6 +51,11 @@ const Settings = () => {
       document.documentElement.classList.remove("dark");
       localStorage.setItem("theme", "light");
     }
+    // Update theme-color meta tags to match current theme
+    const themeColor = newTheme ? "#121821" : "#ffffff";
+    document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+      meta.setAttribute("content", themeColor);
+    });
   };
 
   const togglePushNotifications = async () => {
@@ -96,10 +101,10 @@ const Settings = () => {
 
     try {
       const filePath = `${user.id}/avatar.jpg`;
-      
+
       // Delete old avatar if exists
       await supabase.storage.from("avatars").remove([filePath]);
-      
+
       const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, blob, {
         contentType: "image/jpeg",
         upsert: true,

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'filinto-muller-v1';
+const CACHE_NAME = 'filinto-muller-v2';
 const OFFLINE_URL = '/';
 
 // Assets to pre-cache for offline shell
@@ -7,12 +7,13 @@ const PRECACHE_ASSETS = [
   '/icon-192.png',
   '/icon-512.png',
   '/favicon.ico',
+  '/notification-badge.png',
 ];
 
 // Install: pre-cache essential assets
-self.addEventListener('install', function(event) {
+self.addEventListener('install', function (event) {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
+    caches.open(CACHE_NAME).then(function (cache) {
       return cache.addAll(PRECACHE_ASSETS);
     })
   );
@@ -20,13 +21,13 @@ self.addEventListener('install', function(event) {
 });
 
 // Activate: clean up old caches
-self.addEventListener('activate', function(event) {
+self.addEventListener('activate', function (event) {
   event.waitUntil(
-    caches.keys().then(function(cacheNames) {
+    caches.keys().then(function (cacheNames) {
       return Promise.all(
         cacheNames
-          .filter(function(name) { return name !== CACHE_NAME; })
-          .map(function(name) { return caches.delete(name); })
+          .filter(function (name) { return name !== CACHE_NAME; })
+          .map(function (name) { return caches.delete(name); })
       );
     })
   );
@@ -34,7 +35,7 @@ self.addEventListener('activate', function(event) {
 });
 
 // Fetch: network-first strategy with cache fallback
-self.addEventListener('fetch', function(event) {
+self.addEventListener('fetch', function (event) {
   // Skip non-GET requests and chrome-extension requests
   if (event.request.method !== 'GET') return;
   if (event.request.url.startsWith('chrome-extension://')) return;
@@ -42,7 +43,7 @@ self.addEventListener('fetch', function(event) {
   // For navigation requests, use network-first
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(function() {
+      fetch(event.request).catch(function () {
         return caches.match(OFFLINE_URL);
       })
     );
@@ -52,24 +53,24 @@ self.addEventListener('fetch', function(event) {
   // For other requests: network first, then cache
   event.respondWith(
     fetch(event.request)
-      .then(function(response) {
+      .then(function (response) {
         // Cache successful responses
         if (response.status === 200) {
           const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
+          caches.open(CACHE_NAME).then(function (cache) {
             cache.put(event.request, responseClone);
           });
         }
         return response;
       })
-      .catch(function() {
+      .catch(function () {
         return caches.match(event.request);
       })
   );
 });
 
 // Push notifications
-self.addEventListener('push', function(event) {
+self.addEventListener('push', function (event) {
   let data = {};
   try {
     data = event.data ? event.data.json() : {};
@@ -81,7 +82,7 @@ self.addEventListener('push', function(event) {
   const options = {
     body: data.body || '',
     icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    badge: '/notification-badge.png',
     data: data.data || {},
     vibrate: [200, 100, 200],
   };
@@ -90,7 +91,7 @@ self.addEventListener('push', function(event) {
 });
 
 // Notification click handler
-self.addEventListener('notificationclick', function(event) {
+self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   const notificationData = event.notification.data;
   let url = '/notifications';
@@ -99,7 +100,7 @@ self.addEventListener('notificationclick', function(event) {
   }
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
       for (const client of clientList) {
         if ('focus' in client) {
           client.navigate(url);

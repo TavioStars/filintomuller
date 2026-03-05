@@ -4,8 +4,8 @@
   "description": "Site de recursos oficial da EE Senador Filinto Müller",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#272725",
-  "theme_color": "#FAFAFA",
+  "background_color": "#121821",
+  "theme_color": "#ffffff",
   "orientation": "portrait-primary",
   "icons": [
     {

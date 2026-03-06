@@ -1,92 +1,170 @@
 
 
-## Plano de Implementação
+## Plano de Implementação — Integração Completa
 
-Este plano cobre 5 áreas: botão de excluir, cards de agendamento, calendário, upload de notificações e PWA.
-
----
-
-### 1. Botão de Excluir Agendamento (Admin vs Normal)
-
-**Problema:** Quando admin, o botão `size="icon"` com `h-8 w-8` tenta mostrar 2 ícones (Shield + Trash2) que estouram o espaço.
-
-**Solução:** 
-- Para admin excluindo agendamento de outro usuário: usar um botão mais largo (`w-auto px-2`) com os dois ícones menores lado a lado.
-- Para o próprio usuário ou não-admin: manter botão `size="icon"` normal apenas com a lixeira.
-
-Arquivo: `src/pages/Scheduling.tsx` (linhas 308-317)
+Este plano aborda: build error, dashboard com dados reais, tabela de recursos, push notifications, calendário e PWA.
 
 ---
 
-### 2. Cards de Agendamento — Aba "Do Dia" e "Últimos"
+### 1. Corrigir Build Error — Edge Function Push
 
-**Aba "Do Dia":**
-- A data exibida deve ser a data para qual foi agendado (já é assim).
-- Adicionar botão "i" (Info) ao lado da data. Ao clicar, abre um `Popover` com detalhes: recurso, aula, período, quem agendou, data de criação e hora de criação (fuso America/Campo_Grande).
+**Problema:** `npm:web-push@3.6.7` não é resolvido no Deno. Precisa de importação via `esm.sh`.
 
-**Aba "Últimos":**
-- Exibir a data para qual foi agendado como principal.
-- Trocar "Agendado às HH:MM" por "Agendado em DD/MM/YYYY às HH:MM" (data e hora de criação).
-
-Será necessário refatorar `renderBookingCard` para distinguir o contexto (day vs recent) e adicionar o popover de info na aba "Do Dia".
-
-Arquivo: `src/pages/Scheduling.tsx`
-
----
-
-### 3. Calendário — Diferenciar Dia Selecionado vs Dia Atual
-
-**Problema:** `day_selected` e `day_today` usam estilos similares, causando confusão.
-
-**Solução:** No `src/components/ui/calendar.tsx`:
-- `day_today`: borda destacada sem preenchimento (ex: `border-2 border-primary text-primary font-bold`) — indica "hoje".
-- `day_selected`: preenchimento sólido (já usa `bg-primary text-primary-foreground`) — indica seleção.
-
-Isso garante que quando hoje e selecionado coincidem, o preenchimento prevalece, e quando são diferentes, são visualmente distintos.
-
-Arquivo: `src/components/ui/calendar.tsx` (linha 36)
+**Solução:** Em `supabase/functions/push/index.ts`, trocar:
+```
+import webpush from "npm:web-push@3.6.7";
+```
+por:
+```
+import webpush from "https://esm.sh/web-push@3.6.7";
+```
 
 ---
 
-### 4. Upload de Imagens em Notificações
+### 2. Dashboard — Substituir Mocks por Dados Reais
 
-**Problema:** O bucket `notification-images` tem política de INSERT restrita a admins via `has_role(auth.uid(), 'admin')`. Essa função verifica a tabela `user_roles`. Se o administrador não tiver entrada nessa tabela, o upload falha silenciosamente.
+**Arquivo:** `src/components/AdminDashboard.tsx`
 
-**Investigação:** A política está correta. O problema provável é que falta uma política de **DELETE** no bucket para limpeza e, mais importante, o erro pode ser no `sanitizedName` que remove caracteres especiais mas pode gerar nomes duplicados em uploads rápidos (mesmo `Date.now()`). 
+Remover todas as constantes `MOCK_*` e substituir por queries ao Supabase na tabela `bookings`:
 
-**Solução:**
-- Adicionar `crypto.randomUUID()` ou timestamp mais granular ao nome do arquivo para evitar colisões.
-- Adicionar política de DELETE para admins no bucket `notification-images`.
-- Melhorar tratamento de erro no `handleSubmit` para mostrar a mensagem real do erro de upload ao invés de uma genérica.
+- **Summary cards:** Queries filtradas por período:
+  - `bookingsCreatedToday`: bookings com `created_at` de hoje
+  - `bookingsForToday`: bookings com `date` de hoje
+  - `bookingsThisWeek`: bookings com `date` na semana corrente (seg-sex)
+  - `topResource`: recurso com mais bookings no mês atual
 
-Arquivos: `src/components/CreateNotificationDialog.tsx`, migração SQL
+- **Weekly chart (Picos Semanais):** Contar bookings por dia da semana na semana atual
 
----
+- **Resource distribution:** Contar bookings por recurso no mês atual
 
-### 5. Visual PWA — theme-color e background_color
+- **Heatmap:** Calcular % de ocupação por aula × período nos últimos 2m/6m/1a. Fórmula: `(contagem / (dias_úteis × total_recursos)) × 100`
 
-**Problema:** `manifest.json` tem `theme_color: "#4a7c59"` (verde) e `background_color: "#0f172a"`. O `index.html` tem `<meta name="theme-color" content="#4a7c59">`.
+- **Top Users:** Query agrupada por `user_id` com JOIN em `profiles`, ordenada por contagem descendente, LIMIT 5
 
-**Solução:**
-- `public/manifest.json`: `background_color` → `"#272725"`, `theme_color` → `"#FAFAFA"`.
-- `index.html`: remover o `<meta name="theme-color">` estático.
-- `src/App.tsx`: no `useEffect` de tema, atualizar dinamicamente o `<meta name="theme-color">`:
-  - Modo claro: `#FAFAFA`
-  - Modo escuro: `#272725`
-
-Arquivos: `public/manifest.json`, `index.html`, `src/App.tsx`
+Todas as queries filtram por `period` quando não é "todos". Usar `useEffect` com dependências `[period, heatmapRange]`.
 
 ---
 
-### Resumo de Arquivos a Editar
+### 3. Tabela `resources` — Criar e Conectar
+
+**Migração SQL:**
+```sql
+CREATE TABLE public.resources (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  emoji text NOT NULL DEFAULT '📽️',
+  color text NOT NULL DEFAULT 'hsl(200, 70%, 50%)',
+  status text NOT NULL DEFAULT 'disponivel' CHECK (status IN ('disponivel', 'manutencao')),
+  display_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.resources ENABLE ROW LEVEL SECURITY;
+
+-- Todos podem ver
+CREATE POLICY "Anyone can view resources" ON public.resources FOR SELECT USING (true);
+-- Admins gerenciam
+CREATE POLICY "Admins can insert resources" ON public.resources FOR INSERT WITH CHECK (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can update resources" ON public.resources FOR UPDATE USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can delete resources" ON public.resources FOR DELETE USING (has_role(auth.uid(), 'admin'));
+
+-- Seed com recursos existentes
+INSERT INTO public.resources (name, emoji, color, status, display_order) VALUES
+  ('Sala de Reunião', '🏢', 'hsl(280, 65%, 60%)', 'disponivel', 0),
+  ('Datashow 1', '📽️', 'hsl(200, 70%, 50%)', 'disponivel', 1),
+  ('Datashow 2', '📽️', 'hsl(30, 85%, 55%)', 'disponivel', 2),
+  ('Datashow 3', '📽️', 'hsl(160, 60%, 45%)', 'disponivel', 3),
+  ('STE 2', '🖥️', 'hsl(330, 70%, 60%)', 'disponivel', 4),
+  ('Laboratório', '🔬', 'hsl(45, 85%, 60%)', 'disponivel', 5),
+  ('Notebook', '💻', 'hsl(220, 60%, 55%)', 'disponivel', 6),
+  ('Caixa de Som', '🔊', 'hsl(350, 65%, 55%)', 'disponivel', 7);
+```
+
+**ResourcesSheet.tsx:** Substituir `useState(INITIAL_RESOURCES)` por fetch/upsert/insert/delete no Supabase. Recarregar lista após cada operação.
+
+**Scheduling.tsx:** Buscar recursos disponíveis (`status = 'disponivel'`) do banco ao invés do array hardcoded `RESOURCES`. Filtrar recursos em manutenção no diálogo de seleção.
+
+---
+
+### 4. Push Notifications — Corrigir Envio Sem Imagem + Imagem Expandível
+
+**Problema 1:** Notificações sem imagem não enviam push. O `sendPushToAll` é chamado com `title` e `body`, mas a edge function pode falhar silenciosamente.
+
+**Causa provável:** A edge function funciona, mas o `sendPushToAll` em `CreateNotificationDialog.tsx` não passa o `data` (notification_id, banner_image). Precisa passar para que o SW monte a notificação corretamente.
+
+**Solução:** Em `CreateNotificationDialog.tsx`, passar `data` com `notification_id` e `banner_image`:
+```ts
+await sendPushToAll(result.data.title, notifPreview, {
+  notification_id: insertedId, // pegar o id retornado do insert
+  banner_image: bannerUrl
+});
+```
+Alterar o insert para retornar `.select('id').single()` e capturar o ID.
+
+**Problema 2:** Imagem expandível na notificação push.
+
+**Solução:** No `public/sw.js`, adicionar `image` às opções da notificação quando disponível:
+```js
+const options = {
+  body: data.body || '',
+  icon: '/icon-192.png',
+  badge: '/notification-badge.png',
+  image: data.data?.banner_image || undefined, // imagem grande expandível
+  data: data.data || {},
+  vibrate: [200, 100, 200],
+};
+```
+
+---
+
+### 5. Calendário — Cores e Bordas
+
+**Arquivo:** `src/pages/Scheduling.tsx`
+
+**Thresholds:** Alterar `getDateBookingStatus`:
+- ≤6 → `"low"` (verde)
+- 7-20 → `"medium"` (amarelo)  
+- >20 → `"high"` (vermelho)
+
+**Hoje com cor de agendamento:** O problema é que `day_today` sobrescreve os modifier classes. Solução: no calendário, aplicar as cores dos modifiers com `!important` via CSS customizado ou usar classNames que combinem. Na prática, ajustar `modifiersClassNames` para que incluam o contorno quando é hoje, e no `calendar.tsx` garantir que `day_today` não sobreponha o fundo dos modifiers.
+
+Abordagem: remover o `bg-transparent` de `day_today` no calendar.tsx, e adicionar nos `modifiersClassNames` do Scheduling uma classe especial. Melhor: usar CSS customizado no `index.css`:
+```css
+/* Hoje mantém borda + cor de booking */
+.rdp-day_today.day-low { @apply bg-primary/20 border-2 border-primary; }
+.rdp-day_today.day-medium { @apply bg-laboratory/20 border-2 border-primary; }
+.rdp-day_today.day-high { @apply bg-destructive/20 border-2 border-primary; }
+```
+
+**Bordas arredondadas no selecionado:** No `calendar.tsx`, a cell class tem `rounded-l-md` / `rounded-r-md`. Para dia selecionado individual, garantir `rounded-md` no `day_selected`. Ajustar a cell class para usar `[&:has([aria-selected])]:rounded-md` ao invés de left/right separados.
+
+---
+
+### 6. PWA — Cores
+
+**manifest.json:** `background_color` → `"#272725"`, `theme_color` → `"#FAFAFA"`
+
+**index.html:** Atualizar os meta tags de theme-color:
+- light: `#FAFAFA`
+- dark: `#272725`
+
+**App.tsx:** Manter o `MutationObserver` dinâmico já implementado (se presente), garantindo os valores corretos.
+
+---
+
+### Resumo de Arquivos
 
 | Arquivo | Alteração |
 |---|---|
-| `src/pages/Scheduling.tsx` | Botão delete adaptativo + info popover + formato "Agendado em" |
-| `src/components/ui/calendar.tsx` | Estilos distintos para today vs selected |
-| `src/components/CreateNotificationDialog.tsx` | Melhor nomeação de arquivos + tratamento de erro detalhado |
-| `public/manifest.json` | background_color → #272725, theme_color → #FAFAFA |
-| `index.html` | Remover meta theme-color estático |
-| `src/App.tsx` | Atualização dinâmica do theme-color meta tag |
-| Migração SQL | Política de DELETE para notification-images |
+| `supabase/functions/push/index.ts` | Fix import web-push |
+| `src/components/AdminDashboard.tsx` | Reescrever com queries reais ao Supabase |
+| Migração SQL | Criar tabela `resources` com seed |
+| `src/components/ResourcesSheet.tsx` | CRUD conectado ao banco |
+| `src/pages/Scheduling.tsx` | Buscar recursos do banco + novos thresholds calendário |
+| `src/components/CreateNotificationDialog.tsx` | Passar data com ID ao push |
+| `public/sw.js` | Adicionar `image` na notificação expandível |
+| `src/components/ui/calendar.tsx` | Ajustar bordas arredondadas e classes today |
+| `src/index.css` | CSS para hoje + cores de booking |
+| `public/manifest.json` | background_color + theme_color |
+| `index.html` | Atualizar meta theme-color |
 

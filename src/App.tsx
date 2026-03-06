@@ -35,18 +35,16 @@ const App = () => {
         document.documentElement.classList.remove("dark");
       }
       // Update theme-color meta tags to match current theme
-      const themeColor = isDark ? "#121821" : "#ffffff";
+      const themeColor = isDark ? "#272725" : "#FAFAFA";
       document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
         meta.setAttribute("content", themeColor);
       });
     };
     applyTheme();
-    // Listen for storage changes (theme toggle from Settings page)
     window.addEventListener("storage", applyTheme);
-    // Also observe class changes on documentElement for immediate updates
     const observer = new MutationObserver(() => {
       const isDark = document.documentElement.classList.contains("dark");
-      const themeColor = isDark ? "#121821" : "#ffffff";
+      const themeColor = isDark ? "#272725" : "#FAFAFA";
       document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
         meta.setAttribute("content", themeColor);
       });

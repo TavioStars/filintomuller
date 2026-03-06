@@ -78,8 +78,8 @@ self.addEventListener('push', function (event) {
     data = { title: 'Nova notificação', body: '' };
   }
 
-  const title = data.title || 'Nova notificação';
-  const options = {
+  var title = data.title || 'Nova notificação';
+  var options = {
     body: data.body || '',
     icon: '/icon-192.png',
     badge: '/notification-badge.png',
@@ -87,21 +87,27 @@ self.addEventListener('push', function (event) {
     vibrate: [200, 100, 200],
   };
 
+  // Add expandable banner image if available
+  if (data.data && data.data.banner_image) {
+    options.image = data.data.banner_image;
+  }
+
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 // Notification click handler
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
-  const notificationData = event.notification.data;
-  let url = '/notifications';
+  var notificationData = event.notification.data;
+  var url = '/notifications';
   if (notificationData && notificationData.notification_id) {
     url = '/notifications/' + notificationData.notification_id;
   }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
-      for (const client of clientList) {
+      for (var i = 0; i < clientList.length; i++) {
+        var client = clientList[i];
         if ('focus' in client) {
           client.navigate(url);
           return client.focus();

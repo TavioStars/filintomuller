@@ -1,27 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-    Sheet,
-    SheetContent,
-    SheetHeader,
-    SheetTitle,
-    SheetDescription,
+    Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Pencil, Plus, Wrench, Check, X } from "lucide-react";
+import { Pencil, Plus, Wrench, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-// ─── PRESET COLORS ─────────────────────────────────────────────
 const PRESET_COLORS = [
     { name: "Azul", value: "hsl(200, 70%, 50%)" },
     { name: "Laranja", value: "hsl(30, 85%, 55%)" },
@@ -37,30 +29,17 @@ const PRESET_COLORS = [
     { name: "Coral", value: "hsl(15, 75%, 55%)" },
 ];
 
-// ─── TYPES ─────────────────────────────────────────────────────
 interface Resource {
     id: string;
     name: string;
     emoji: string;
     color: string;
     status: "disponivel" | "manutencao";
+    display_order: number;
 }
-
-// ─── INITIAL MOCK RESOURCES ─────────────────────────────────────
-const INITIAL_RESOURCES: Resource[] = [
-    { id: "meeting-room", name: "Sala de Reunião", emoji: "🏢", color: "hsl(280, 65%, 60%)", status: "disponivel" },
-    { id: "datashow-1", name: "Datashow 1", emoji: "📽️", color: "hsl(200, 70%, 50%)", status: "disponivel" },
-    { id: "datashow-2", name: "Datashow 2", emoji: "📽️", color: "hsl(30, 85%, 55%)", status: "disponivel" },
-    { id: "datashow-3", name: "Datashow 3", emoji: "📽️", color: "hsl(160, 60%, 45%)", status: "disponivel" },
-    { id: "computer-room", name: "STE 2", emoji: "🖥️", color: "hsl(330, 70%, 60%)", status: "disponivel" },
-    { id: "laboratory", name: "Laboratório", emoji: "🔬", color: "hsl(45, 85%, 60%)", status: "disponivel" },
-    { id: "notebook", name: "Notebook", emoji: "💻", color: "hsl(220, 60%, 55%)", status: "disponivel" },
-    { id: "speaker", name: "Caixa de Som", emoji: "🔊", color: "hsl(350, 65%, 55%)", status: "disponivel" },
-];
 
 const EMOJI_OPTIONS = ["📽️", "🖥️", "💻", "🔬", "🏢", "🔊", "📺", "🎤", "📱", "🖨️", "📡", "🔌"];
 
-// ─── MAIN COMPONENT ────────────────────────────────────────────
 interface ResourcesSheetProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -68,12 +47,12 @@ interface ResourcesSheetProps {
 
 const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
     const { toast } = useToast();
-    const [resources, setResources] = useState<Resource[]>(INITIAL_RESOURCES);
+    const [resources, setResources] = useState<Resource[]>([]);
+    const [loading, setLoading] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [editingResource, setEditingResource] = useState<Resource | null>(null);
 
-    // Edit form state
     const [editName, setEditName] = useState("");
     const [editEmoji, setEditEmoji] = useState("");
     const [editColor, setEditColor] = useState("");
@@ -81,12 +60,25 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
     const [editStatus, setEditStatus] = useState<"disponivel" | "manutencao">("disponivel");
     const [useCustomColor, setUseCustomColor] = useState(false);
 
-    // Add form state
     const [newName, setNewName] = useState("");
     const [newEmoji, setNewEmoji] = useState("📽️");
     const [newColor, setNewColor] = useState(PRESET_COLORS[0].value);
     const [newCustomColor, setNewCustomColor] = useState("#3b82f6");
     const [newUseCustom, setNewUseCustom] = useState(false);
+
+    const fetchResources = async () => {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from("resources")
+            .select("*")
+            .order("display_order", { ascending: true });
+        if (!error && data) setResources(data as Resource[]);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        if (open) fetchResources();
+    }, [open]);
 
     const openEditDialog = (resource: Resource) => {
         setEditingResource(resource);
@@ -99,38 +91,36 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
         setEditDialogOpen(true);
     };
 
-    const handleSaveEdit = () => {
+    const handleSaveEdit = async () => {
         if (!editingResource || !editName.trim()) return;
         const finalColor = useCustomColor ? editCustomColor : editColor;
-        setResources((prev) =>
-            prev.map((r) =>
-                r.id === editingResource.id ? { ...r, name: editName.trim(), emoji: editEmoji, color: finalColor, status: editStatus } : r
-            )
-        );
+        const { error } = await supabase.from("resources").update({
+            name: editName.trim(), emoji: editEmoji, color: finalColor, status: editStatus,
+        }).eq("id", editingResource.id);
+        if (error) {
+            toast({ variant: "destructive", title: "Erro", description: error.message });
+            return;
+        }
         setEditDialogOpen(false);
-        toast({
-            title: "Recurso atualizado! ✅",
-            description: `${editName.trim()} foi atualizado com sucesso.`,
-        });
+        toast({ title: "Recurso atualizado! ✅", description: `${editName.trim()} foi atualizado com sucesso.` });
+        fetchResources();
     };
 
-    const handleAddResource = () => {
+    const handleAddResource = async () => {
         if (!newName.trim()) return;
         const finalColor = newUseCustom ? newCustomColor : newColor;
-        const newId = `resource-${Date.now()}`;
-        setResources((prev) => [
-            ...prev,
-            { id: newId, name: newName.trim(), emoji: newEmoji, color: finalColor, status: "disponivel" },
-        ]);
-        setAddDialogOpen(false);
-        setNewName("");
-        setNewEmoji("📽️");
-        setNewColor(PRESET_COLORS[0].value);
-        setNewUseCustom(false);
-        toast({
-            title: "Recurso adicionado! 🎉",
-            description: `${newName.trim()} foi adicionado ao sistema.`,
+        const maxOrder = resources.length > 0 ? Math.max(...resources.map(r => r.display_order)) + 1 : 0;
+        const { error } = await supabase.from("resources").insert({
+            name: newName.trim(), emoji: newEmoji, color: finalColor, status: "disponivel" as const, display_order: maxOrder,
         });
+        if (error) {
+            toast({ variant: "destructive", title: "Erro", description: error.message });
+            return;
+        }
+        setAddDialogOpen(false);
+        setNewName(""); setNewEmoji("📽️"); setNewColor(PRESET_COLORS[0].value); setNewUseCustom(false);
+        toast({ title: "Recurso adicionado! 🎉", description: `${newName.trim()} foi adicionado ao sistema.` });
+        fetchResources();
     };
 
     return (
@@ -147,55 +137,52 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
                         </SheetDescription>
                     </SheetHeader>
 
-                    {/* Add button */}
                     <Button onClick={() => setAddDialogOpen(true)} className="w-full mb-4 gap-2" variant="outline">
                         <Plus className="h-4 w-4" />
                         Adicionar Novo Recurso
                     </Button>
 
-                    {/* Resource list */}
-                    <div className="space-y-3">
-                        {resources.map((resource) => (
-                            <div
-                                key={resource.id}
-                                className={`flex items-center gap-3 p-4 rounded-xl border transition-all duration-300 ${resource.status === "manutencao"
+                    {loading ? (
+                        <p className="text-sm text-muted-foreground text-center py-8">Carregando...</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {resources.map((resource) => (
+                                <div
+                                    key={resource.id}
+                                    className={`flex items-center gap-3 p-4 rounded-xl border transition-all duration-300 ${resource.status === "manutencao"
                                         ? "border-destructive/30 bg-destructive/5 opacity-75"
                                         : "border-border hover:border-primary/30 hover:bg-muted/30"
                                     }`}
-                            >
-                                {/* Color dot + emoji */}
-                                <div
-                                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-lg"
-                                    style={{ backgroundColor: resource.color + "22", borderLeft: `3px solid ${resource.color}` }}
                                 >
-                                    {resource.emoji}
-                                </div>
-
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-foreground truncate">{resource.name}</p>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                        {resource.status === "disponivel" ? (
-                                            <Badge variant="secondary" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                                                <Check className="h-3 w-3 mr-1" />
-                                                Disponível
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="secondary" className="text-xs bg-destructive/10 text-destructive border-destructive/20">
-                                                <Wrench className="h-3 w-3 mr-1" />
-                                                Manutenção
-                                            </Badge>
-                                        )}
+                                    <div
+                                        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-lg"
+                                        style={{ backgroundColor: resource.color + "22", borderLeft: `3px solid ${resource.color}` }}
+                                    >
+                                        {resource.emoji}
                                     </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-foreground truncate">{resource.name}</p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            {resource.status === "disponivel" ? (
+                                                <Badge variant="secondary" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                                                    <Check className="h-3 w-3 mr-1" />
+                                                    Disponível
+                                                </Badge>
+                                            ) : (
+                                                <Badge variant="secondary" className="text-xs bg-destructive/10 text-destructive border-destructive/20">
+                                                    <Wrench className="h-3 w-3 mr-1" />
+                                                    Manutenção
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="shrink-0" onClick={() => openEditDialog(resource)}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
                                 </div>
-
-                                {/* Edit button */}
-                                <Button variant="ghost" size="icon" className="shrink-0" onClick={() => openEditDialog(resource)}>
-                                    <Pencil className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
 
                     <p className="text-xs text-muted-foreground text-center mt-6">
                         {resources.length} recurso{resources.length !== 1 ? "s" : ""} cadastrado{resources.length !== 1 ? "s" : ""}
@@ -203,37 +190,26 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
                 </SheetContent>
             </Sheet>
 
-            {/* ─── EDIT DIALOG ─────────────────────────────────────── */}
+            {/* Edit Dialog */}
             <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                 <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Editar Recurso</DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>Editar Recurso</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-2">
-                        {/* Name */}
                         <div className="space-y-2">
                             <Label htmlFor="edit-name">Nome do Recurso</Label>
                             <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Ex: Datashow 4" />
                         </div>
-
-                        {/* Emoji */}
                         <div className="space-y-2">
                             <Label>Ícone</Label>
                             <div className="flex flex-wrap gap-2">
                                 {EMOJI_OPTIONS.map((emoji) => (
-                                    <button
-                                        key={emoji}
-                                        onClick={() => setEditEmoji(emoji)}
-                                        className={`w-10 h-10 rounded-lg text-lg flex items-center justify-center border-2 transition-all ${editEmoji === emoji ? "border-primary bg-primary/10 scale-110" : "border-border hover:border-primary/30"
-                                            }`}
-                                    >
+                                    <button key={emoji} onClick={() => setEditEmoji(emoji)}
+                                        className={`w-10 h-10 rounded-lg text-lg flex items-center justify-center border-2 transition-all ${editEmoji === emoji ? "border-primary bg-primary/10 scale-110" : "border-border hover:border-primary/30"}`}>
                                         {emoji}
                                     </button>
                                 ))}
                             </div>
                         </div>
-
-                        {/* Color */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label>Cor</Label>
@@ -250,46 +226,25 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
                             ) : (
                                 <div className="grid grid-cols-6 gap-2">
                                     {PRESET_COLORS.map((color) => (
-                                        <button
-                                            key={color.value}
-                                            onClick={() => setEditColor(color.value)}
-                                            className={`w-full aspect-square rounded-lg border-2 transition-all ${editColor === color.value ? "border-foreground scale-110 ring-2 ring-primary/30" : "border-transparent hover:border-border"
-                                                }`}
-                                            style={{ backgroundColor: color.value }}
-                                            title={color.name}
-                                        />
+                                        <button key={color.value} onClick={() => setEditColor(color.value)}
+                                            className={`w-full aspect-square rounded-lg border-2 transition-all ${editColor === color.value ? "border-foreground scale-110 ring-2 ring-primary/30" : "border-transparent hover:border-border"}`}
+                                            style={{ backgroundColor: color.value }} title={color.name} />
                                     ))}
                                 </div>
                             )}
                         </div>
-
-                        {/* Status */}
                         <div className="space-y-2">
                             <Label>Status</Label>
                             <div className="flex gap-2">
-                                <Button
-                                    variant={editStatus === "disponivel" ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setEditStatus("disponivel")}
-                                    className="flex-1 gap-1"
-                                >
-                                    <Check className="h-3.5 w-3.5" />
-                                    Disponível
+                                <Button variant={editStatus === "disponivel" ? "default" : "outline"} size="sm" onClick={() => setEditStatus("disponivel")} className="flex-1 gap-1">
+                                    <Check className="h-3.5 w-3.5" /> Disponível
                                 </Button>
-                                <Button
-                                    variant={editStatus === "manutencao" ? "destructive" : "outline"}
-                                    size="sm"
-                                    onClick={() => setEditStatus("manutencao")}
-                                    className="flex-1 gap-1"
-                                >
-                                    <Wrench className="h-3.5 w-3.5" />
-                                    Manutenção
+                                <Button variant={editStatus === "manutencao" ? "destructive" : "outline"} size="sm" onClick={() => setEditStatus("manutencao")} className="flex-1 gap-1">
+                                    <Wrench className="h-3.5 w-3.5" /> Manutenção
                                 </Button>
                             </div>
                             {editStatus === "manutencao" && (
-                                <p className="text-xs text-destructive">
-                                    ⚠️ O recurso ficará indisponível para novos agendamentos.
-                                </p>
+                                <p className="text-xs text-destructive">⚠️ O recurso ficará indisponível para novos agendamentos.</p>
                             )}
                         </div>
                     </div>
@@ -300,37 +255,26 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
                 </DialogContent>
             </Dialog>
 
-            {/* ─── ADD DIALOG ──────────────────────────────────────── */}
+            {/* Add Dialog */}
             <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
                 <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Adicionar Novo Recurso</DialogTitle>
-                    </DialogHeader>
+                    <DialogHeader><DialogTitle>Adicionar Novo Recurso</DialogTitle></DialogHeader>
                     <div className="space-y-4 py-2">
-                        {/* Name */}
                         <div className="space-y-2">
                             <Label htmlFor="new-name">Nome do Recurso</Label>
                             <Input id="new-name" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ex: Projetor Portátil" />
                         </div>
-
-                        {/* Emoji */}
                         <div className="space-y-2">
                             <Label>Ícone</Label>
                             <div className="flex flex-wrap gap-2">
                                 {EMOJI_OPTIONS.map((emoji) => (
-                                    <button
-                                        key={emoji}
-                                        onClick={() => setNewEmoji(emoji)}
-                                        className={`w-10 h-10 rounded-lg text-lg flex items-center justify-center border-2 transition-all ${newEmoji === emoji ? "border-primary bg-primary/10 scale-110" : "border-border hover:border-primary/30"
-                                            }`}
-                                    >
+                                    <button key={emoji} onClick={() => setNewEmoji(emoji)}
+                                        className={`w-10 h-10 rounded-lg text-lg flex items-center justify-center border-2 transition-all ${newEmoji === emoji ? "border-primary bg-primary/10 scale-110" : "border-border hover:border-primary/30"}`}>
                                         {emoji}
                                     </button>
                                 ))}
                             </div>
                         </div>
-
-                        {/* Color */}
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label>Cor</Label>
@@ -347,14 +291,9 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
                             ) : (
                                 <div className="grid grid-cols-6 gap-2">
                                     {PRESET_COLORS.map((color) => (
-                                        <button
-                                            key={color.value}
-                                            onClick={() => setNewColor(color.value)}
-                                            className={`w-full aspect-square rounded-lg border-2 transition-all ${newColor === color.value ? "border-foreground scale-110 ring-2 ring-primary/30" : "border-transparent hover:border-border"
-                                                }`}
-                                            style={{ backgroundColor: color.value }}
-                                            title={color.name}
-                                        />
+                                        <button key={color.value} onClick={() => setNewColor(color.value)}
+                                            className={`w-full aspect-square rounded-lg border-2 transition-all ${newColor === color.value ? "border-foreground scale-110 ring-2 ring-primary/30" : "border-transparent hover:border-border"}`}
+                                            style={{ backgroundColor: color.value }} title={color.name} />
                                     ))}
                                 </div>
                             )}
@@ -362,10 +301,7 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
                     </div>
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancelar</Button>
-                        <Button onClick={handleAddResource} disabled={!newName.trim()}>
-                            <Plus className="h-4 w-4 mr-1" />
-                            Adicionar Recurso
-                        </Button>
+                        <Button onClick={handleAddResource} disabled={!newName.trim()}>Adicionar</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

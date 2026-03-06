@@ -322,6 +322,36 @@ export type Database = {
           },
         ]
       }
+      resources: {
+        Row: {
+          color: string
+          created_at: string
+          display_order: number
+          emoji: string
+          id: string
+          name: string
+          status: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          display_order?: number
+          emoji?: string
+          id?: string
+          name: string
+          status?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          display_order?: number
+          emoji?: string
+          id?: string
+          name?: string
+          status?: string
+        }
+        Relationships: []
+      }
       schedules: {
         Row: {
           created_at: string

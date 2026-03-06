@@ -2,15 +2,18 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Users } from "lucide-react";
+import { ArrowLeft, Users, Wrench } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import LoadingScreen from "@/components/LoadingScreen";
 import UsersSheet from "@/components/UsersSheet";
+import ResourcesSheet from "@/components/ResourcesSheet";
+import AdminDashboard from "@/components/AdminDashboard";
 
 const AdminPanel = () => {
   const navigate = useNavigate();
   const { isAdmin, loading } = useAdmin();
   const [showUsersSheet, setShowUsersSheet] = useState(false);
+  const [showResourcesSheet, setShowResourcesSheet] = useState(false);
 
   if (loading) {
     return <LoadingScreen />;
@@ -34,14 +37,24 @@ const AdminPanel = () => {
             Voltar
           </Button>
 
-          <Button
-            onClick={() => setShowUsersSheet(true)}
-            variant="gradient"
-            className="gap-2"
-          >
-            <Users className="h-4 w-4" />
-            Usuários
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setShowResourcesSheet(true)}
+              variant="outline"
+              className="gap-2"
+            >
+              <Wrench className="h-4 w-4" />
+              Recursos
+            </Button>
+            <Button
+              onClick={() => setShowUsersSheet(true)}
+              variant="gradient"
+              className="gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Usuários
+            </Button>
+          </div>
         </div>
 
         <h1 className="text-3xl font-bold text-foreground mb-8">Painel de Administrador</h1>
@@ -61,9 +74,13 @@ const AdminPanel = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Dashboard */}
+        <AdminDashboard />
       </div>
 
       <UsersSheet open={showUsersSheet} onOpenChange={setShowUsersSheet} />
+      <ResourcesSheet open={showResourcesSheet} onOpenChange={setShowResourcesSheet} />
     </div>
   );
 };

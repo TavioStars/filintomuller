@@ -1,7 +1,6 @@
-const CACHE_NAME = 'filinto-muller-v2';
+const CACHE_NAME = 'filinto-muller-v3';
 const OFFLINE_URL = '/';
 
-// Assets to pre-cache for offline shell
 const PRECACHE_ASSETS = [
   '/',
   '/icon-192.png',
@@ -10,7 +9,6 @@ const PRECACHE_ASSETS = [
   '/notification-badge.png',
 ];
 
-// Install: pre-cache essential assets
 self.addEventListener('install', function (event) {
   event.waitUntil(
     caches.open(CACHE_NAME).then(function (cache) {
@@ -20,7 +18,6 @@ self.addEventListener('install', function (event) {
   self.skipWaiting();
 });
 
-// Activate: clean up old caches
 self.addEventListener('activate', function (event) {
   event.waitUntil(
     caches.keys().then(function (cacheNames) {
@@ -34,13 +31,11 @@ self.addEventListener('activate', function (event) {
   self.clients.claim();
 });
 
-// Fetch: network-first strategy with cache fallback
 self.addEventListener('fetch', function (event) {
-  // Skip non-GET requests and chrome-extension requests
   if (event.request.method !== 'GET') return;
   if (event.request.url.startsWith('chrome-extension://')) return;
+  if (event.request.url.includes('supabase.co')) return;
 
-  // For navigation requests, use network-first
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(function () {
@@ -50,13 +45,11 @@ self.addEventListener('fetch', function (event) {
     return;
   }
 
-  // For other requests: network first, then cache
   event.respondWith(
     fetch(event.request)
       .then(function (response) {
-        // Cache successful responses
         if (response.status === 200) {
-          const responseClone = response.clone();
+          var responseClone = response.clone();
           caches.open(CACHE_NAME).then(function (cache) {
             cache.put(event.request, responseClone);
           });
@@ -69,12 +62,16 @@ self.addEventListener('fetch', function (event) {
   );
 });
 
-// Push notifications
 self.addEventListener('push', function (event) {
-  let data = {};
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch (e) {
+  console.log('[SW] Push received:', event);
+  var data = {};
+  if (event.data) {
+    try { data = event.data.json(); }
+    catch (e) {
+      try { data = { title: event.data.text(), body: '' }; }
+      catch (e2) { data = { title: 'Nova notificação', body: '' }; }
+    }
+  } else {
     data = { title: 'Nova notificação', body: '' };
   }
 
@@ -85,9 +82,10 @@ self.addEventListener('push', function (event) {
     badge: '/notification-badge.png',
     data: data.data || {},
     vibrate: [200, 100, 200],
+    tag: 'filinto-notification-' + Date.now(),
+    renotify: true,
   };
 
-  // Add expandable banner image if available
   if (data.data && data.data.banner_image) {
     options.image = data.data.banner_image;
   }
@@ -95,7 +93,6 @@ self.addEventListener('push', function (event) {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Notification click handler
 self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   var notificationData = event.notification.data;

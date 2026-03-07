@@ -29,32 +29,41 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return false;
 
-    const registration = await navigator.serviceWorker.ready;
+    let registration = await navigator.serviceWorker.getRegistration("/");
+    if (!registration) {
+      registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      await navigator.serviceWorker.ready;
+    }
+
     const publicKey = await getVapidPublicKey();
-    const reg = registration as any;
-    const subscription = await reg.pushManager.subscribe({
+
+    const existingSub = await registration.pushManager.getSubscription();
+    if (existingSub) {
+      try { await existingSub.unsubscribe(); } catch (e) { console.warn("Failed to unsubscribe old push:", e); }
+    }
+
+    const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey),
+      applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
     });
 
     const subJson = subscription.toJSON();
-
-    // Store subscription in DB
-    const { error } = await supabase.from("push_subscriptions" as any).upsert(
-      {
-        user_id: userId,
-        endpoint: subJson.endpoint!,
-        p256dh: subJson.keys!.p256dh!,
-        auth: subJson.keys!.auth!,
-      },
-      { onConflict: "endpoint" }
-    );
-
-    if (error) {
-      console.error("Error storing push subscription:", error);
+    if (!subJson.endpoint || !subJson.keys?.p256dh || !subJson.keys?.auth) {
+      console.error("Invalid subscription object:", subJson);
       return false;
     }
 
+    await supabase.from("push_subscriptions" as any).delete().eq("user_id", userId);
+
+    const { error } = await supabase.from("push_subscriptions" as any).insert({
+      user_id: userId,
+      endpoint: subJson.endpoint,
+      p256dh: subJson.keys.p256dh,
+      auth: subJson.keys.auth,
+    });
+
+    if (error) { console.error("Error storing push subscription:", error); return false; }
+    console.log("Push subscription stored successfully");
     return true;
   } catch (err) {
     console.error("Push subscription failed:", err);
@@ -62,30 +71,32 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
   }
 }
 
-/** Re-subscribe silently if push is enabled but subscription is missing/stale */
 export async function refreshPushSubscription(userId: string): Promise<void> {
   try {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
     if (Notification.permission !== "granted") return;
 
-    const registration = await navigator.serviceWorker.ready;
-    const reg = registration as any;
-    const existing = await reg.pushManager.getSubscription();
+    let registration = await navigator.serviceWorker.getRegistration("/");
+    if (!registration) {
+      registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      await navigator.serviceWorker.ready;
+    }
 
+    const existing = await registration.pushManager.getSubscription();
     if (existing) {
-      // Re-upsert to ensure DB has the current subscription
       const subJson = existing.toJSON();
-      await supabase.from("push_subscriptions" as any).upsert(
-        {
+      if (subJson.endpoint && subJson.keys?.p256dh && subJson.keys?.auth) {
+        await supabase.from("push_subscriptions" as any).delete().eq("user_id", userId);
+        await supabase.from("push_subscriptions" as any).insert({
           user_id: userId,
-          endpoint: subJson.endpoint!,
-          p256dh: subJson.keys!.p256dh!,
-          auth: subJson.keys!.auth!,
-        },
-        { onConflict: "endpoint" }
-      );
+          endpoint: subJson.endpoint,
+          p256dh: subJson.keys.p256dh,
+          auth: subJson.keys.auth,
+        });
+        console.log("Push subscription refreshed");
+      }
     } else {
-      // No active subscription — re-subscribe
+      console.log("No active push subscription, re-subscribing...");
       await subscribeToPush(userId);
     }
   } catch (err) {
@@ -96,32 +107,26 @@ export async function refreshPushSubscription(userId: string): Promise<void> {
 export async function unsubscribeFromPush(): Promise<void> {
   try {
     if (!("serviceWorker" in navigator)) return;
-    const registration = await navigator.serviceWorker.ready;
-    const reg = registration as any;
-    const subscription = await reg.pushManager.getSubscription();
-
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    if (!registration) return;
+    const subscription = await registration.pushManager.getSubscription();
     if (subscription) {
       const endpoint = subscription.endpoint;
       await subscription.unsubscribe();
-      await supabase
-        .from("push_subscriptions" as any)
-        .delete()
-        .eq("endpoint", endpoint);
+      await supabase.from("push_subscriptions" as any).delete().eq("endpoint", endpoint);
     }
   } catch (err) {
     console.error("Push unsubscribe failed:", err);
   }
 }
 
-export async function sendPushToAll(
-  title: string,
-  body: string,
-  data?: any
-): Promise<void> {
+export async function sendPushToAll(title: string, body: string, data?: any): Promise<void> {
   try {
-    await supabase.functions.invoke("push", {
+    const { data: result, error } = await supabase.functions.invoke("push", {
       body: { action: "send", title, body, data },
     });
+    if (error) console.error("Push send error:", error);
+    else console.log("Push sent:", result);
   } catch (err) {
     console.error("Error sending push notifications:", err);
   }

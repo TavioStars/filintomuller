@@ -400,7 +400,7 @@ const Scheduling = () => {
                   <Card className="p-4">
                     <p className="text-sm font-semibold text-foreground mb-3">Recursos</p>
                     <div className="grid grid-cols-2 gap-2">
-                      {resources.map(r => (
+                      {resources.filter(r => r.status !== "excluido").map(r => (
                         <div key={r.id} className="flex items-center gap-2 text-xs">
                           <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
                           <span className="text-muted-foreground">{r.emoji} {r.name}</span>

@@ -7,10 +7,14 @@ import {
     Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
-import { Pencil, Plus, Wrench, Check } from "lucide-react";
+import { Pencil, Plus, Wrench, Check, Trash2, RotateCcw, Archive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -34,7 +38,7 @@ interface Resource {
     name: string;
     emoji: string;
     color: string;
-    status: "disponivel" | "manutencao";
+    status: "disponivel" | "manutencao" | "excluido";
     display_order: number;
 }
 
@@ -48,11 +52,18 @@ interface ResourcesSheetProps {
 const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
     const { toast } = useToast();
     const [resources, setResources] = useState<Resource[]>([]);
+    const [archivedResources, setArchivedResources] = useState<Resource[]>([]);
     const [loading, setLoading] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
-    const [editingResource, setEditingResource] = useState<Resource | null>(null);
+    const [showArchived, setShowArchived] = useState(false);
 
+    // Soft-delete confirmation
+    const [softDeleteConfirm, setSoftDeleteConfirm] = useState<Resource | null>(null);
+    // Permanent delete confirmation
+    const [permanentDeleteConfirm, setPermanentDeleteConfirm] = useState<Resource | null>(null);
+
+    const [editingResource, setEditingResource] = useState<Resource | null>(null);
     const [editName, setEditName] = useState("");
     const [editEmoji, setEditEmoji] = useState("");
     const [editColor, setEditColor] = useState("");
@@ -72,7 +83,11 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
             .from("resources")
             .select("*")
             .order("display_order", { ascending: true });
-        if (!error && data) setResources(data as Resource[]);
+        if (!error && data) {
+            const all = data as Resource[];
+            setResources(all.filter(r => r.status !== "excluido"));
+            setArchivedResources(all.filter(r => r.status === "excluido"));
+        }
         setLoading(false);
     };
 
@@ -85,7 +100,7 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
         setEditName(resource.name);
         setEditEmoji(resource.emoji);
         setEditColor(resource.color);
-        setEditStatus(resource.status);
+        setEditStatus(resource.status === "excluido" ? "disponivel" : resource.status);
         setUseCustomColor(!PRESET_COLORS.some((c) => c.value === resource.color));
         setEditCustomColor("#3b82f6");
         setEditDialogOpen(true);
@@ -103,6 +118,46 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
         }
         setEditDialogOpen(false);
         toast({ title: "Recurso atualizado! ✅", description: `${editName.trim()} foi atualizado com sucesso.` });
+        fetchResources();
+    };
+
+    // Soft-delete: set status to "excluido"
+    const handleSoftDelete = async (resource: Resource) => {
+        const { error } = await supabase.from("resources").update({
+            status: "excluido" as any,
+        }).eq("id", resource.id);
+        if (error) {
+            toast({ variant: "destructive", title: "Erro", description: error.message });
+            return;
+        }
+        setSoftDeleteConfirm(null);
+        setEditDialogOpen(false);
+        toast({ title: "Recurso excluído", description: `${resource.name} foi movido para a lixeira. Você pode restaurá-lo a qualquer momento.` });
+        fetchResources();
+    };
+
+    // Restore: set status back to "disponivel"
+    const handleRestore = async (resource: Resource) => {
+        const { error } = await supabase.from("resources").update({
+            status: "disponivel" as any,
+        }).eq("id", resource.id);
+        if (error) {
+            toast({ variant: "destructive", title: "Erro", description: error.message });
+            return;
+        }
+        toast({ title: "Recurso restaurado! ✅", description: `${resource.name} está disponível novamente.` });
+        fetchResources();
+    };
+
+    // Permanent delete
+    const handlePermanentDelete = async (resource: Resource) => {
+        const { error } = await supabase.from("resources").delete().eq("id", resource.id);
+        if (error) {
+            toast({ variant: "destructive", title: "Erro ao excluir", description: error.message });
+            return;
+        }
+        setPermanentDeleteConfirm(null);
+        toast({ title: "Recurso excluído permanentemente", description: `${resource.name} foi removido do sistema.` });
         fetchResources();
     };
 
@@ -133,18 +188,38 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
                             Gerenciar Recursos
                         </SheetTitle>
                         <SheetDescription>
-                            Edite, adicione ou coloque recursos em manutenção. As alterações afetam o sistema de agendamento.
+                            Edite, adicione ou exclua recursos. As alterações afetam o sistema de agendamento.
                         </SheetDescription>
                     </SheetHeader>
 
-                    <Button onClick={() => setAddDialogOpen(true)} className="w-full mb-4 gap-2" variant="outline">
-                        <Plus className="h-4 w-4" />
-                        Adicionar Novo Recurso
-                    </Button>
+                    {/* Tab toggle */}
+                    <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5 mb-4">
+                        <button
+                            onClick={() => setShowArchived(false)}
+                            className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${!showArchived ? "bg-card shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                        >
+                            Ativos ({resources.length})
+                        </button>
+                        <button
+                            onClick={() => setShowArchived(true)}
+                            className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${showArchived ? "bg-card shadow-sm text-destructive" : "text-muted-foreground hover:text-foreground"}`}
+                        >
+                            <Archive className="h-3.5 w-3.5" />
+                            Excluídos ({archivedResources.length})
+                        </button>
+                    </div>
+
+                    {!showArchived && (
+                        <Button onClick={() => setAddDialogOpen(true)} className="w-full mb-4 gap-2" variant="outline">
+                            <Plus className="h-4 w-4" />
+                            Adicionar Novo Recurso
+                        </Button>
+                    )}
 
                     {loading ? (
                         <p className="text-sm text-muted-foreground text-center py-8">Carregando...</p>
-                    ) : (
+                    ) : !showArchived ? (
+                        /* Active resources */
                         <div className="space-y-3">
                             {resources.map((resource) => (
                                 <div
@@ -152,7 +227,7 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
                                     className={`flex items-center gap-3 p-4 rounded-xl border transition-all duration-300 ${resource.status === "manutencao"
                                         ? "border-destructive/30 bg-destructive/5 opacity-75"
                                         : "border-border hover:border-primary/30 hover:bg-muted/30"
-                                    }`}
+                                        }`}
                                 >
                                     <div
                                         className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-lg"
@@ -181,11 +256,55 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
                                     </Button>
                                 </div>
                             ))}
+                            {resources.length === 0 && (
+                                <p className="text-sm text-muted-foreground text-center py-8">Nenhum recurso ativo</p>
+                            )}
+                        </div>
+                    ) : (
+                        /* Archived resources */
+                        <div className="space-y-3">
+                            {archivedResources.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <Archive className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                                    <p className="text-sm text-muted-foreground">Nenhum recurso excluído</p>
+                                </div>
+                            ) : (
+                                archivedResources.map((resource) => (
+                                    <div
+                                        key={resource.id}
+                                        className="flex items-center gap-3 p-4 rounded-xl border border-border/50 bg-muted/30 opacity-70"
+                                    >
+                                        <div
+                                            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-lg grayscale"
+                                            style={{ backgroundColor: resource.color + "22", borderLeft: `3px solid ${resource.color}` }}
+                                        >
+                                            {resource.emoji}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-semibold text-foreground truncate">{resource.name}</p>
+                                            <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground mt-0.5">
+                                                <Trash2 className="h-3 w-3 mr-1" /> Excluído
+                                            </Badge>
+                                        </div>
+                                        <div className="flex gap-1 shrink-0">
+                                            <Button variant="ghost" size="icon" className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10" onClick={() => handleRestore(resource)} title="Restaurar">
+                                                <RotateCcw className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setPermanentDeleteConfirm(resource)} title="Excluir permanentemente">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     )}
 
                     <p className="text-xs text-muted-foreground text-center mt-6">
-                        {resources.length} recurso{resources.length !== 1 ? "s" : ""} cadastrado{resources.length !== 1 ? "s" : ""}
+                        {!showArchived
+                            ? `${resources.length} recurso${resources.length !== 1 ? "s" : ""} ativo${resources.length !== 1 ? "s" : ""}`
+                            : `${archivedResources.length} recurso${archivedResources.length !== 1 ? "s" : ""} excluído${archivedResources.length !== 1 ? "s" : ""}`
+                        }
                     </p>
                 </SheetContent>
             </Sheet>
@@ -248,12 +367,64 @@ const ResourcesSheet = ({ open, onOpenChange }: ResourcesSheetProps) => {
                             )}
                         </div>
                     </div>
-                    <DialogFooter>
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1 sm:mr-auto"
+                            onClick={() => { if (editingResource) setSoftDeleteConfirm(editingResource); }}
+                        >
+                            <Trash2 className="h-4 w-4" /> Excluir
+                        </Button>
                         <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
                         <Button onClick={handleSaveEdit} disabled={!editName.trim()}>Salvar Alterações</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Soft Delete Confirmation */}
+            <AlertDialog open={!!softDeleteConfirm} onOpenChange={(open) => { if (!open) setSoftDeleteConfirm(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir recurso?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            O recurso <strong>"{softDeleteConfirm?.name}"</strong> será movido para a lista de excluídos.
+                            Ele ficará indisponível para novos agendamentos, mas você pode restaurá-lo a qualquer momento.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => { if (softDeleteConfirm) handleSoftDelete(softDeleteConfirm); }}
+                        >
+                            Excluir recurso
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Permanent Delete Confirmation */}
+            <AlertDialog open={!!permanentDeleteConfirm} onOpenChange={(open) => { if (!open) setPermanentDeleteConfirm(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>⚠️ Excluir permanentemente?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta ação é <strong>irreversível</strong>. O recurso <strong>"{permanentDeleteConfirm?.name}"</strong> será
+                            completamente removido do sistema e não poderá ser recuperado.
+                            Agendamentos existentes que usam este recurso podem ser afetados.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => { if (permanentDeleteConfirm) handlePermanentDelete(permanentDeleteConfirm); }}
+                        >
+                            Excluir permanentemente
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Add Dialog */}
             <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>

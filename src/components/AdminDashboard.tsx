@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 type Period = "matutino" | "vespertino" | "noturno" | "todos";
 type HeatmapRange = "2m" | "6m" | "1a";
 type ChartMode = "donut" | "bar";
+type TopUsersRange = "1m" | "3m" | "6m" | "all";
 
 const PERIOD_LABELS: Record<Period, string> = {
     matutino: "☀️ Matutino", vespertino: "🌅 Vespertino", noturno: "🌙 Noturno", todos: "📊 Todos",
@@ -204,6 +205,7 @@ const AdminDashboard = () => {
     const [period, setPeriod] = useState<Period>("todos");
     const [heatmapRange, setHeatmapRange] = useState<HeatmapRange>("2m");
     const [chartMode, setChartMode] = useState<ChartMode>("donut");
+    const [topUsersRange, setTopUsersRange] = useState<TopUsersRange>("all");
     const [isExporting, setIsExporting] = useState(false);
     const dashboardRef = useRef<HTMLDivElement>(null);
 
@@ -228,10 +230,20 @@ const AdminDashboard = () => {
         fetchData();
     }, []);
 
-    // Compute top users when bookings change
+    // Compute top users when bookings change, filtered by topUsersRange
     useEffect(() => {
         const userMap = new Map<string, { name: string; role: string; total: number }>();
-        const filtered = period === "todos" ? allBookings : allBookings.filter(b => b.period === period);
+        let filtered = period === "todos" ? allBookings : allBookings.filter(b => b.period === period);
+
+        // Apply time range filter
+        if (topUsersRange !== "all") {
+            const now = new Date();
+            const rangeMonths = topUsersRange === "1m" ? 1 : topUsersRange === "3m" ? 3 : 6;
+            const cutoff = new Date(now.getFullYear(), now.getMonth() - rangeMonths, now.getDate());
+            const cutoffStr = `${cutoff.getFullYear()}-${String(cutoff.getMonth() + 1).padStart(2, '0')}-${String(cutoff.getDate()).padStart(2, '0')}`;
+            filtered = filtered.filter(b => b.date >= cutoffStr);
+        }
+
         for (const b of filtered) {
             const key = b.user_id;
             const existing = userMap.get(key);
@@ -249,7 +261,7 @@ const AdminDashboard = () => {
             ...u,
             avatar: u.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(),
         })));
-    }, [allBookings, period]);
+    }, [allBookings, period, topUsersRange]);
 
     // Filter bookings by period
     const bookings = period === "todos" ? allBookings : allBookings.filter(b => b.period === period);
@@ -260,7 +272,7 @@ const AdminDashboard = () => {
     const bookingsForToday = bookings.filter(b => b.date === today).length;
     const { start: weekStart, end: weekEnd, monday } = getWeekRange();
     const bookingsThisWeek = bookings.filter(b => b.date >= weekStart && b.date <= weekEnd).length;
-    
+
     // Top resource of the month
     const { start: monthStart, end: monthEnd } = getMonthRange();
     const monthBookings = bookings.filter(b => b.date >= monthStart && b.date <= monthEnd);
@@ -300,7 +312,7 @@ const AdminDashboard = () => {
     // Heatmap
     const heatmapStart = getHeatmapStartDate(heatmapRange);
     const heatmapBookings = allBookings.filter(b => b.date >= heatmapStart);
-    
+
     // Count working days in range
     const startD = new Date(heatmapStart);
     const endD = new Date();
@@ -322,56 +334,168 @@ const AdminDashboard = () => {
         };
     });
 
-    // PDF Export
+    // PDF color helpers
+    const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
+        s /= 100; l /= 100;
+        const k = (n: number) => (n + h / 30) % 12;
+        const a = s * Math.min(l, 1 - l);
+        const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+        return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+    };
+    const getHeatRgb = (value: number): [number, number, number] => {
+        if (value >= 80) return [59, 130, 246];
+        if (value >= 60) return [99, 155, 246];
+        if (value >= 40) return [150, 190, 250];
+        if (value >= 20) return [200, 220, 250];
+        return [230, 230, 235];
+    };
+
+    // PDF Export (jsPDF native drawing)
     const handleExportPDF = useCallback(async () => {
-        if (!dashboardRef.current) return;
         setIsExporting(true);
         try {
-            const html2canvas = (await import("html2canvas")).default;
             const { jsPDF } = await import("jspdf");
-            const canvas = await html2canvas(dashboardRef.current, { scale: 2, useCORS: true, backgroundColor: "#fafafa", logging: false });
-            const imgData = canvas.toDataURL("image/png");
             const pdf = new jsPDF("p", "mm", "a4");
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = pdfWidth - 20;
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            const W = pdf.internal.pageSize.getWidth();
+            const H = pdf.internal.pageSize.getHeight();
+            const margin = 8;
+            const contentW = W - margin * 2;
+            let y = 0;
 
-            pdf.setFillColor(18, 24, 33);
-            pdf.rect(0, 0, pdfWidth, 25, "F");
-            pdf.setTextColor(255, 255, 255);
-            pdf.setFontSize(16);
-            pdf.text("Escola Senador Filinto Müller", 10, 12);
-            pdf.setFontSize(10);
-            const periodLabel = period === "todos" ? "Todos os Períodos" : period.charAt(0).toUpperCase() + period.slice(1);
-            pdf.text(`Relatório do Dashboard — ${periodLabel} — ${new Date().toLocaleDateString("pt-BR")}`, 10, 20);
+            const headerBg: [number, number, number] = [18, 24, 33];
+            const white: [number, number, number] = [255, 255, 255];
+            const dark: [number, number, number] = [30, 30, 30];
+            const gray: [number, number, number] = [120, 120, 120];
+            const lightGray: [number, number, number] = [245, 245, 245];
+            const medGray: [number, number, number] = [200, 200, 200];
+            const primaryC: [number, number, number] = [59, 130, 246];
 
-            let yOffset = 30;
-            let remainingHeight = imgHeight;
-            let sourceY = 0;
-            while (remainingHeight > 0) {
-                const availableHeight = (yOffset === 30 ? pdfHeight - 35 : pdfHeight - 15);
-                const sliceHeight = Math.min(remainingHeight, availableHeight);
-                const sliceCanvasHeight = (sliceHeight / imgHeight) * canvas.height;
-                const tempCanvas = document.createElement("canvas");
-                tempCanvas.width = canvas.width;
-                tempCanvas.height = sliceCanvasHeight;
-                const ctx = tempCanvas.getContext("2d");
-                if (ctx) {
-                    ctx.drawImage(canvas, 0, sourceY, canvas.width, sliceCanvasHeight, 0, 0, canvas.width, sliceCanvasHeight);
-                    pdf.addImage(tempCanvas.toDataURL("image/png"), "PNG", 10, yOffset, imgWidth, sliceHeight);
-                }
-                remainingHeight -= sliceHeight;
-                sourceY += sliceCanvasHeight;
-                if (remainingHeight > 0) { pdf.addPage(); yOffset = 10; }
-            }
+            // Header
+            pdf.setFillColor(...headerBg);
+            pdf.rect(0, 0, W, 18, "F");
+            pdf.setTextColor(...white);
+            pdf.setFontSize(13);
+            pdf.setFont("helvetica", "bold");
+            pdf.text("Escola Senador Filinto Muller", margin, 8);
             pdf.setFontSize(8);
-            pdf.setTextColor(150, 150, 150);
-            pdf.text("Gerado automaticamente pelo sistema — EE Senador Filinto Müller", 10, pdfHeight - 5);
+            pdf.setFont("helvetica", "normal");
+            const periodLabel = period === "todos" ? "Todos os Periodos" : period.charAt(0).toUpperCase() + period.slice(1);
+            pdf.text(`Relatorio do Dashboard - ${periodLabel} - ${new Date().toLocaleDateString("pt-BR")}`, margin, 14);
+            y = 22;
+
+            // Summary Cards
+            const cardW = (contentW - 3 * 3) / 4;
+            const cardH = 18;
+            const summaryCards = [
+                { title: "Agend. Feitos Hoje", value: String(bookingsCreatedToday), sub: "Reservas criadas hoje" },
+                { title: "Agend. Para Hoje", value: String(bookingsForToday), sub: "Marcados para hoje" },
+                { title: "Agend. da Semana", value: String(bookingsThisWeek), sub: "Total semanal" },
+                { title: "Recurso + Disputado", value: topResource, sub: "Mais requisitado do mes" },
+            ];
+            summaryCards.forEach((card, i) => {
+                const x = margin + i * (cardW + 3);
+                pdf.setFillColor(...lightGray); pdf.roundedRect(x, y, cardW, cardH, 2, 2, "F");
+                pdf.setTextColor(...gray); pdf.setFontSize(6); pdf.setFont("helvetica", "normal"); pdf.text(card.title, x + 3, y + 5);
+                pdf.setTextColor(...dark); pdf.setFontSize(12); pdf.setFont("helvetica", "bold"); pdf.text(card.value, x + 3, y + 12);
+                pdf.setTextColor(...gray); pdf.setFontSize(5); pdf.setFont("helvetica", "normal"); pdf.text(card.sub, x + 3, y + 16);
+            });
+            y += cardH + 5;
+
+            // Weekly Peaks + Resource Distribution
+            const halfW = (contentW - 4) / 2;
+            const sectionH = 52;
+
+            // Weekly Peaks (left)
+            pdf.setFillColor(...lightGray); pdf.roundedRect(margin, y, halfW, sectionH, 2, 2, "F");
+            pdf.setTextColor(...dark); pdf.setFontSize(8); pdf.setFont("helvetica", "bold"); pdf.text("Picos Semanais", margin + 4, y + 6);
+            pdf.setTextColor(...gray); pdf.setFontSize(5.5); pdf.setFont("helvetica", "normal"); pdf.text("Agendamentos por dia da semana", margin + 4, y + 10);
+            const barAreaX = margin + 6; const barAreaY = y + 14; const barAreaW = halfW - 12; const barAreaH = sectionH - 20;
+            const maxVal = Math.max(...weeklyData.map(d => d.agendamentos), 1);
+            const barGap = 3; const barW = (barAreaW - barGap * (weeklyData.length - 1)) / weeklyData.length;
+            weeklyData.forEach((d, i) => {
+                const bh = (d.agendamentos / maxVal) * (barAreaH - 8);
+                const bx = barAreaX + i * (barW + barGap);
+                const by = barAreaY + barAreaH - 6 - bh;
+                pdf.setFillColor(...primaryC); pdf.roundedRect(bx, by, barW, Math.max(bh, 1), 1, 1, "F");
+                pdf.setTextColor(...dark); pdf.setFontSize(5.5); pdf.setFont("helvetica", "bold"); pdf.text(String(d.agendamentos), bx + barW / 2, by - 1, { align: "center" });
+                pdf.setTextColor(...gray); pdf.setFontSize(5); pdf.setFont("helvetica", "normal"); pdf.text(d.day, bx + barW / 2, barAreaY + barAreaH - 1, { align: "center" });
+            });
+
+            // Resource Distribution (right)
+            const rxStart = margin + halfW + 4;
+            pdf.setFillColor(...lightGray); pdf.roundedRect(rxStart, y, halfW, sectionH, 2, 2, "F");
+            pdf.setTextColor(...dark); pdf.setFontSize(8); pdf.setFont("helvetica", "bold"); pdf.text("Distribuicao por Recurso", rxStart + 4, y + 6);
+            pdf.setTextColor(...gray); pdf.setFontSize(5.5); pdf.setFont("helvetica", "normal"); pdf.text("Agendamentos por tipo de recurso", rxStart + 4, y + 10);
+            const resStartY = y + 14; const resBarMaxW = halfW - 30; const resLineH = 5.5;
+            const maxResVal = Math.max(...resourceDistribution.map(x => x.value), 1);
+            resourceDistribution.slice(0, 7).forEach((r, i) => {
+                const ry = resStartY + i * resLineH;
+                const bw = (r.value / maxResVal) * resBarMaxW;
+                pdf.setTextColor(...dark); pdf.setFontSize(5); pdf.setFont("helvetica", "normal"); pdf.text(r.name, rxStart + 4, ry + 3.5);
+                const hslMatch = r.color.match(/hsl\((\d+)/);
+                const hue = hslMatch ? parseInt(hslMatch[1]) : 200;
+                const rgb = hslToRgb(hue, 60, 50);
+                pdf.setFillColor(rgb[0], rgb[1], rgb[2]); pdf.roundedRect(rxStart + 24, ry + 0.5, Math.max(bw, 1), 3.5, 0.5, 0.5, "F");
+                pdf.setTextColor(...gray); pdf.setFontSize(4.5); pdf.text(String(r.value), rxStart + 25 + bw, ry + 3.5);
+            });
+            y += sectionH + 5;
+
+            // Heatmap + Top Users
+            const heatH = 62;
+
+            // Heatmap (left)
+            pdf.setFillColor(...lightGray); pdf.roundedRect(margin, y, halfW, heatH, 2, 2, "F");
+            pdf.setTextColor(...dark); pdf.setFontSize(8); pdf.setFont("helvetica", "bold"); pdf.text("Mapa de Calor - Horarios", margin + 4, y + 6);
+            pdf.setTextColor(...gray); pdf.setFontSize(5.5); pdf.setFont("helvetica", "normal");
+            const hmRangeLabel = heatmapRange === "2m" ? "2 meses" : heatmapRange === "6m" ? "6 meses" : "1 ano";
+            pdf.text(`Ocupacao por aula e periodo (%) - ${hmRangeLabel}`, margin + 4, y + 10);
+            const htY = y + 14; const colW = (halfW - 30) / 3; const colX = margin + 22;
+            pdf.setFontSize(5); pdf.setFont("helvetica", "bold"); pdf.setTextColor(...gray);
+            pdf.text("Matutino", colX + colW * 0.5, htY, { align: "center" });
+            pdf.text("Vespertino", colX + colW * 1.5, htY, { align: "center" });
+            pdf.text("Noturno", colX + colW * 2.5, htY, { align: "center" });
+            heatmapData.forEach((row, i) => {
+                const ry = htY + 4 + i * 7;
+                pdf.setTextColor(...dark); pdf.setFontSize(5.5); pdf.setFont("helvetica", "normal"); pdf.text(row.class, margin + 4, ry + 4);
+                (["matutino", "vespertino", "noturno"] as const).forEach((p, j) => {
+                    const val = row[p]; const cx = colX + j * colW;
+                    const cellColor = getHeatRgb(val);
+                    pdf.setFillColor(cellColor[0], cellColor[1], cellColor[2]); pdf.roundedRect(cx + 1, ry, colW - 2, 6, 1, 1, "F");
+                    pdf.setTextColor(val >= 60 ? 255 : 50, val >= 60 ? 255 : 50, val >= 60 ? 255 : 50);
+                    pdf.setFontSize(5.5); pdf.setFont("helvetica", "bold"); pdf.text(`${val}%`, cx + colW / 2, ry + 4, { align: "center" });
+                });
+            });
+
+            // Top Users (right)
+            const tuX = margin + halfW + 4;
+            pdf.setFillColor(...lightGray); pdf.roundedRect(tuX, y, halfW, heatH, 2, 2, "F");
+            pdf.setTextColor(...dark); pdf.setFontSize(8); pdf.setFont("helvetica", "bold"); pdf.text("Top Usuarios", tuX + 4, y + 6);
+            pdf.setTextColor(...gray); pdf.setFontSize(5.5); pdf.setFont("helvetica", "normal");
+            const tuRangeLabel = topUsersRange === "1m" ? "1 mes" : topUsersRange === "3m" ? "3 meses" : topUsersRange === "6m" ? "6 meses" : "Todo o tempo";
+            pdf.text(`Quem mais agenda recursos - ${tuRangeLabel}`, tuX + 4, y + 10);
+            const medals = ["1o", "2o", "3o"];
+            topUsers.forEach((user, i) => {
+                const uy = y + 15 + i * 9;
+                const barPct = topUsers[0]?.total > 0 ? (user.total / topUsers[0].total) * 100 : 0;
+                pdf.setTextColor(...primaryC); pdf.setFontSize(6); pdf.setFont("helvetica", "bold");
+                pdf.text(i < 3 ? medals[i] : `${i + 1}o`, tuX + 5, uy + 3);
+                pdf.setTextColor(...dark); pdf.setFontSize(6); pdf.setFont("helvetica", "bold"); pdf.text(user.name, tuX + 14, uy + 2.5);
+                pdf.setTextColor(...gray); pdf.setFontSize(4.5); pdf.setFont("helvetica", "normal"); pdf.text(user.role, tuX + 14, uy + 6);
+                pdf.setTextColor(...dark); pdf.setFontSize(8); pdf.setFont("helvetica", "bold"); pdf.text(String(user.total), tuX + halfW - 8, uy + 4);
+                const pbX = tuX + 14; const pbW = halfW - 30; const pbY = uy + 7;
+                pdf.setFillColor(...medGray); pdf.roundedRect(pbX, pbY, pbW, 1.5, 0.5, 0.5, "F");
+                pdf.setFillColor(...primaryC); pdf.roundedRect(pbX, pbY, pbW * barPct / 100, 1.5, 0.5, 0.5, "F");
+            });
+
+            // Footer
+            pdf.setFontSize(6); pdf.setTextColor(150, 150, 150);
+            pdf.text("Gerado automaticamente pelo sistema - EE Senador Filinto Muller", margin, H - 4);
+            pdf.text(new Date().toLocaleString("pt-BR"), W - margin, H - 4, { align: "right" });
+
             pdf.save(`dashboard-filinto-muller-${period}-${new Date().toISOString().split("T")[0]}.pdf`);
         } catch (err) { console.error("Erro ao gerar PDF:", err); }
         finally { setIsExporting(false); }
-    }, [period]);
+    }, [period, heatmapRange, topUsersRange, bookingsCreatedToday, bookingsForToday, bookingsThisWeek, topResource, weeklyData, resourceDistribution, heatmapData, topUsers]);
 
     const heatmapRangeLabels: Record<HeatmapRange, string> = { "2m": "2 meses", "6m": "6 meses", "1a": "1 ano" };
 
@@ -564,8 +688,23 @@ const AdminDashboard = () => {
                     <AnimatedSection delay={400} className="lg:col-span-2">
                         <Card className="h-full">
                             <CardHeader className="pb-3">
-                                <CardTitle className="text-base font-semibold flex items-center gap-2"><Crown className="h-4 w-4 text-amber-500" /> Top Usuários</CardTitle>
-                                <p className="text-xs text-muted-foreground">Quem mais agenda recursos</p>
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <div>
+                                        <CardTitle className="text-base font-semibold flex items-center gap-2"><Crown className="h-4 w-4 text-amber-500" /> Top Usuários</CardTitle>
+                                        <p className="text-xs text-muted-foreground mt-0.5">Quem mais agenda recursos</p>
+                                    </div>
+                                    <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+                                        {(["1m", "3m", "6m", "all"] as TopUsersRange[]).map((range) => (
+                                            <button
+                                                key={range}
+                                                onClick={() => setTopUsersRange(range)}
+                                                className={`px-2 py-1 rounded-md text-xs font-medium transition-all ${topUsersRange === range ? "bg-card shadow-sm text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                                            >
+                                                {range === "1m" ? "1 mês" : range === "3m" ? "3 meses" : range === "6m" ? "6 meses" : "Todos"}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </CardHeader>
                             <CardContent>
                                 {topUsers.length === 0 ? (

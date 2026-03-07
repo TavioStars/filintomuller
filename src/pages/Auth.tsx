@@ -44,12 +44,12 @@ const Auth = () => {
 
   const roleOptions = [
     "Aluno(a)", "Professor(a)", "Coordenador(a)", "Diretor(a)", "Vice-diretor(a)",
-    "Supervisor(a)", "Orientador(a)", "Secretário(a)", "Inspetor(a)", 
+    "Supervisor(a)", "Orientador(a)", "Secretário(a)", "Inspetor(a)",
     "Bibliotecário(a)", "Cozinheiro(a)", "Técnico(a)",
   ];
 
   useEffect(() => {
-    if (user) navigate("/menu");
+    if (user) navigate("/");
   }, [user, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -84,10 +84,10 @@ const Auth = () => {
 
       if (profile?.status === "denied") {
         await signOut();
-        toast({ 
-          variant: "destructive", 
-          title: "Acesso Negado", 
-          description: "Sua conta foi negada pelo administrador. Entre em contato com a escola para mais informações." 
+        toast({
+          variant: "destructive",
+          title: "Acesso Negado",
+          description: "Sua conta foi negada pelo administrador. Entre em contato com a escola para mais informações."
         });
         setIsLoading(false);
         return;
@@ -95,7 +95,7 @@ const Auth = () => {
     }
 
     toast({ title: "Bem-vindo!", description: "Login realizado com sucesso." });
-    navigate("/menu");
+    navigate("/");
     setIsLoading(false);
   };
 
@@ -111,7 +111,7 @@ const Auth = () => {
     try {
       // Create account
       const { error: signUpError } = await signUp(result.data.email, result.data.password, result.data.name, result.data.role);
-      
+
       if (signUpError) {
         toast({ variant: "destructive", title: "Erro ao cadastrar", description: signUpError.message });
         setIsLoading(false);
@@ -121,7 +121,7 @@ const Auth = () => {
       // If role is not "Aluno(a)", create access request (status is set by the database trigger)
       if (result.data.role !== "Aluno(a)") {
         const { data: { user: newUser } } = await supabase.auth.getUser();
-        
+
         if (newUser) {
           // Create access request - profile status is already set by handle_new_user trigger
           await supabase
@@ -162,7 +162,7 @@ const Auth = () => {
               <TabsTrigger value="signin">Entrar</TabsTrigger>
               <TabsTrigger value="signup">Cadastrar</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="signin">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
@@ -175,7 +175,7 @@ const Auth = () => {
                 </div>
                 <Button type="submit" variant="gradient" className="w-full" disabled={isLoading}>{isLoading ? "Entrando..." : "Entrar"}</Button>
               </form>
-              
+
               <div className="mt-6">
                 <Separator className="my-4" />
                 <Button variant="ghost" className="w-full" onClick={() => { continueAsAnonymous(); navigate("/menu"); }}>
@@ -186,7 +186,7 @@ const Auth = () => {
                 </p>
               </div>
             </TabsContent>
-            
+
             <TabsContent value="signup">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">

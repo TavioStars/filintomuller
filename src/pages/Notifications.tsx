@@ -89,7 +89,7 @@ const Notifications = () => {
           <ArrowLeft className="h-4 w-4" /> Voltar
         </Button>
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-wrap items-center gap-3 mb-8">
           <div className="flex items-center gap-3">
             <Bell className="h-8 w-8 text-gradient-end glow-gradient rounded-full p-1" />
             <h1 className="text-3xl font-bold text-gradient">Notificações</h1>

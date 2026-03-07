@@ -262,12 +262,14 @@ serve(async (req) => {
     // Send push to all subscribers
     if (action === "send") {
       const { title, body: notifBody, data } = body;
+      console.log("[push] Sending push:", { title, bodyLen: notifBody?.length, data });
 
       const { data: subscriptions, error } = await supabase
         .from("push_subscriptions")
         .select("*");
 
       if (error) throw error;
+      console.log("[push] Found", subscriptions?.length || 0, "subscriptions");
 
       const results = await Promise.allSettled(
         (subscriptions || []).map((sub: any) =>

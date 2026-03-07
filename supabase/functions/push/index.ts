@@ -283,11 +283,13 @@ serve(async (req) => {
             vapidPrivateKey,
             "mailto:admin@filintomuller.app"
           ).catch(async (err: any) => {
+            console.error("[push] Failed for endpoint:", sub.endpoint, "status:", err.statusCode, "msg:", err.message);
             if (err.statusCode === 410 || err.statusCode === 404) {
               await supabase
                 .from("push_subscriptions")
                 .delete()
                 .eq("id", sub.id);
+              console.log("[push] Removed stale subscription:", sub.id);
             }
             throw err;
           })

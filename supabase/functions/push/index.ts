@@ -137,10 +137,18 @@ async function sendWebPush(
   
   const authSecret = base64UrlToUint8Array(subscription.keys.auth);
   
-  // HKDF helper
+  // HKDF helper (RFC 5869)
   async function hkdf(salt: Uint8Array, ikm: Uint8Array, info: Uint8Array, length: number): Promise<Uint8Array> {
-    const key = await crypto.subtle.importKey("raw", ikm.buffer as ArrayBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-    const prk = new Uint8Array(await crypto.subtle.sign("HMAC", key, (salt.length > 0 ? salt : new Uint8Array(32)).buffer as ArrayBuffer));
+    // Extract: PRK = HMAC-SHA256(salt, IKM) — salt is the key, IKM is the data
+    const saltKey = await crypto.subtle.importKey(
+      "raw",
+      (salt.length > 0 ? salt : new Uint8Array(32)).buffer as ArrayBuffer,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const prk = new Uint8Array(await crypto.subtle.sign("HMAC", saltKey, ikm.buffer as ArrayBuffer));
+    // Expand: OKM = HMAC-SHA256(PRK, info || 0x01)
     const prkKey = await crypto.subtle.importKey("raw", prk.buffer as ArrayBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     const infoWithCounter = new Uint8Array([...info, 1]);
     const okm = new Uint8Array(await crypto.subtle.sign("HMAC", prkKey, infoWithCounter));
@@ -254,12 +262,14 @@ serve(async (req) => {
     // Send push to all subscribers
     if (action === "send") {
       const { title, body: notifBody, data } = body;
+      console.log("[push] Sending push:", { title, bodyLen: notifBody?.length, data });
 
       const { data: subscriptions, error } = await supabase
         .from("push_subscriptions")
         .select("*");
 
       if (error) throw error;
+      console.log("[push] Found", subscriptions?.length || 0, "subscriptions");
 
       const results = await Promise.allSettled(
         (subscriptions || []).map((sub: any) =>
@@ -273,11 +283,13 @@ serve(async (req) => {
             vapidPrivateKey,
             "mailto:admin@filintomuller.app"
           ).catch(async (err: any) => {
+            console.error("[push] Failed for endpoint:", sub.endpoint, "status:", err.statusCode, "msg:", err.message);
             if (err.statusCode === 410 || err.statusCode === 404) {
               await supabase
                 .from("push_subscriptions")
                 .delete()
                 .eq("id", sub.id);
+              console.log("[push] Removed stale subscription:", sub.id);
             }
             throw err;
           })

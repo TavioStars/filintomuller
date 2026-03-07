@@ -120,7 +120,7 @@ async function sendWebPush(
   const subscriberPublicKeyRaw = base64UrlToUint8Array(subscription.keys.p256dh);
   const subscriberPublicKey = await crypto.subtle.importKey(
     "raw",
-    subscriberPublicKeyRaw,
+    subscriberPublicKeyRaw.buffer as ArrayBuffer,
     { name: "ECDH", namedCurve: "P-256" },
     false,
     []
@@ -139,9 +139,9 @@ async function sendWebPush(
   
   // HKDF helper
   async function hkdf(salt: Uint8Array, ikm: Uint8Array, info: Uint8Array, length: number): Promise<Uint8Array> {
-    const key = await crypto.subtle.importKey("raw", ikm, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-    const prk = new Uint8Array(await crypto.subtle.sign("HMAC", key, salt.length > 0 ? salt : new Uint8Array(32)));
-    const prkKey = await crypto.subtle.importKey("raw", prk, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const key = await crypto.subtle.importKey("raw", ikm.buffer as ArrayBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const prk = new Uint8Array(await crypto.subtle.sign("HMAC", key, (salt.length > 0 ? salt : new Uint8Array(32)).buffer as ArrayBuffer));
+    const prkKey = await crypto.subtle.importKey("raw", prk.buffer as ArrayBuffer, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     const infoWithCounter = new Uint8Array([...info, 1]);
     const okm = new Uint8Array(await crypto.subtle.sign("HMAC", prkKey, infoWithCounter));
     return okm.slice(0, length);
@@ -171,9 +171,9 @@ async function sendWebPush(
   const payloadBytes = encoder.encode(payload);
   const paddedPayload = new Uint8Array([...payloadBytes, 2]); // delimiter
   
-  const cryptoKey = await crypto.subtle.importKey("raw", cek, { name: "AES-GCM" }, false, ["encrypt"]);
+  const cryptoKey = await crypto.subtle.importKey("raw", cek.buffer as ArrayBuffer, { name: "AES-GCM" }, false, ["encrypt"]);
   const encrypted = new Uint8Array(
-    await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, cryptoKey, paddedPayload)
+    await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce.buffer as ArrayBuffer }, cryptoKey, paddedPayload.buffer as ArrayBuffer)
   );
   
   // Build body: header (salt + rs + keyid) + encrypted
